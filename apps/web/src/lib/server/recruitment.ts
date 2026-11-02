@@ -45,6 +45,15 @@ const CreateJobInput = Schema.Struct({
   employmentType: Schema.String,
   description: Schema.String
 })
+const EditJobInput = Schema.Struct({
+  workspaceSlug: Schema.NonEmptyString,
+  jobId: Schema.NonEmptyString,
+  title: Schema.String,
+  department: Schema.String,
+  location: Schema.String,
+  employmentType: Schema.String,
+  description: Schema.String
+})
 const JobStatusInput = Schema.Struct({
   workspaceSlug: Schema.NonEmptyString,
   jobId: Schema.NonEmptyString,
@@ -75,6 +84,13 @@ export const createRecruitmentJobServerFn = createServerFn({ method: 'POST' })
   .handler(async ({ data }): Promise<{ id: string }> => {
     const { createRecruitmentJobHandler } = await import('./recruitment.effects')
     return createRecruitmentJobHandler(data)
+  })
+
+export const editRecruitmentJobServerFn = createServerFn({ method: 'POST' })
+  .validator(Schema.decodeUnknownSync(EditJobInput))
+  .handler(async ({ data }): Promise<void> => {
+    const { editRecruitmentJobHandler } = await import('./recruitment.effects')
+    return editRecruitmentJobHandler(data)
   })
 
 export const updateRecruitmentJobStatusServerFn = createServerFn({ method: 'POST' })
