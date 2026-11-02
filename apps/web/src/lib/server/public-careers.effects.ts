@@ -10,8 +10,9 @@ export async function loadPublicCareersHandler(input: {
   workspaceSlug: string
 }): Promise<PublicCareersData> {
   const slug = input.workspaceSlug.trim()
+  const disabled = { enabled: false, siteKey: '', privacyPolicyUrl: '' }
   if (!slug || slug.length > 120 || !env.DB) {
-    return { company: '', slug, jobs: [] }
+    return { company: '', slug, jobs: [], applicationConfig: disabled }
   }
   const workspace = await env.DB.prepare('SELECT id,name FROM workspaces WHERE slug=? LIMIT 1')
     .bind(slug).first<{ id: string; name: string }>()
@@ -23,5 +24,16 @@ export async function loadPublicCareersHandler(input: {
     WHERE workspace_id=? AND status='published'
     ORDER BY created_at DESC,id DESC LIMIT 60`)
     .bind(workspace.id).all<PublicRecruitmentJob>()
-  return { company: workspace.name, slug, jobs: result.results }
+  const settings = await env.DB.prepare(`SELECT accept_applications,privacy_policy_url
+    FROM recruitment_application_settings WHERE workspace_id=? LIMIT 1`)
+    .bind(workspace.id).first<{ accept_applications: number; privacy_policy_url: string }>()
+  const enabled = env.RECRUITMENT_PUBLIC_APPLY_ENABLED === 'true' &&
+    Boolean(env.TURNSTILE_SECRET_KEY && env.TURNSTILE_SITE_KEY) &&
+    settings?.accept_applications === 1 && Boolean(settings?.privacy_policy_url)
+  return {
+    company: workspace.name, slug, jobs: result.results,
+    applicationConfig: enabled
+      ? { enabled: true, siteKey: env.TURNSTILE_SITE_KEY || '', privacyPolicyUrl: settings?.privacy_policy_url || '' }
+      : disabled
+  }
 }
