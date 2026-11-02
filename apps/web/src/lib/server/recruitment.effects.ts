@@ -59,8 +59,12 @@ export async function loadRecruitmentHandler(input: {
   const { workspaceId, role, db } = await authorizedWorkspace(input.workspaceSlug)
   const staleBefore = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString()
   const [jobResult, applicationResult, countResult, settingsResult] = await db.batch([
-    db.prepare(`SELECT id,title,department,location,employment_type,description,status,created_at,updated_at
-      FROM recruitment_jobs WHERE workspace_id=? ORDER BY created_at DESC,id DESC LIMIT 150`).bind(workspaceId),
+    db.prepare(`SELECT j.id,j.title,j.department,j.location,j.employment_type,j.description,
+      j.status,j.created_at,j.updated_at,
+      (SELECT COUNT(*) FROM recruitment_applications a
+        WHERE a.workspace_id=j.workspace_id AND a.job_id=j.id) AS application_count
+      FROM recruitment_jobs j WHERE j.workspace_id=?
+      ORDER BY j.created_at DESC,j.id DESC LIMIT 150`).bind(workspaceId),
     db.prepare(`SELECT a.id,a.candidate_id,c.full_name,c.email,c.phone,
       a.job_id,j.title AS job_title,a.stage,a.created_at
       FROM recruitment_applications a
