@@ -53,6 +53,7 @@ const words = {
     new: 'جديد', screening: 'مراجعة', shortlisted: 'القائمة المختصرة',
     interview: 'مقابلة', offer: 'عرض', hired: 'تم التوظيف',
     rejected: 'مرفوض', withdrawn: 'انسحب', candidatesTotal: 'طلبات التوظيف',
+    attentionTitle: 'تحتاج انتباهك', attentionIntro: 'ابدأ بالطلبات التي تحتاج إجراء، بدل البحث في القوائم.', attentionNew: 'طلبات جديدة', attentionStale: 'طلبات متأخرة أكثر من 48 ساعة', attentionInterviews: 'في مرحلة المقابلة', candidateFilterAll: 'كل المراحل',
     privacyTitle: 'إعدادات استقبال التقديمات', privacyBody: 'لن يظهر نموذج التقديم حتى تضيف سياسة الخصوصية وتفعّل الاستقبال وتكتمل حماية الموقع.',
     privacyUrlLabel: 'رابط سياسة الخصوصية للشركة (HTTPS)', privacyEnable: 'السماح باستقبال طلبات التوظيف',
     privacyConfigured: 'حماية التقديم مهيّأة على السيرفر', privacyNotConfigured: 'حماية التقديم لم تُفعّل بعد على السيرفر — سيظل النموذج مغلقًا.',
@@ -83,6 +84,7 @@ const words = {
     new: 'New', screening: 'Screening', shortlisted: 'Shortlisted',
     interview: 'Interview', offer: 'Offer', hired: 'Hired',
     rejected: 'Rejected', withdrawn: 'Withdrawn', candidatesTotal: 'Applications',
+    attentionTitle: 'Needs your attention', attentionIntro: 'Start with the applications that need action.', attentionNew: 'New applications', attentionStale: 'Waiting over 48 hours', attentionInterviews: 'In interview stage', candidateFilterAll: 'All stages',
     privacyTitle: 'Application settings', privacyBody: 'Public application forms stay hidden until your privacy policy, company opt-in and security keys are configured.',
     privacyUrlLabel: 'Company privacy policy URL (HTTPS)', privacyEnable: 'Accept applications',
     privacyConfigured: 'Server security keys are configured', privacyNotConfigured: 'Public intake is not configured on the server. Applications will remain disabled.',
@@ -110,6 +112,7 @@ export function RecruitmentDashboard({
   const [dialog, setDialog] = useState<Dialog>(null)
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState('all')
+  const [candidateStage, setCandidateStage] = useState('all')
   const [job, setJob] = useState<FormJob>(initialJob)
   const [editingJobId, setEditingJobId] = useState<string | null>(null)
   const [candidate, setCandidate] = useState<FormCandidate>(initialCandidate)
@@ -127,8 +130,9 @@ export function RecruitmentDashboard({
     [item.title, item.department, item.location].join(' ').toLocaleLowerCase().includes(search.trim().toLocaleLowerCase())
   ), [data.jobs, filter, search])
   const filteredApplications = useMemo(() => data.applications.filter((item) =>
+    (candidateStage === 'all' || item.stage === candidateStage) &&
     [item.full_name, item.phone, item.email, item.job_title].join(' ').toLocaleLowerCase().includes(search.trim().toLocaleLowerCase())
-  ), [data.applications, search])
+  ), [data.applications, search, candidateStage])
 
   async function act(action: () => Promise<unknown>, close = false) {
     setBusy(true)
@@ -229,6 +233,25 @@ export function RecruitmentDashboard({
             </div>
           ))}
         </div>
+        <section className="rounded-2xl border border-border bg-card p-5 sm:p-6" aria-labelledby="ats-attention-title">
+          <div className="mb-4">
+            <h2 id="ats-attention-title" className="text-lg font-semibold">{t.attentionTitle}</h2>
+            <p className="mt-1 text-sm text-muted-foreground">{t.attentionIntro}</p>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-3">
+            {([
+              { label: t.attentionNew, count: data.counts.newApplications, stage: 'new' },
+              { label: t.attentionStale, count: data.counts.staleApplications, stage: 'new' },
+              { label: t.attentionInterviews, count: data.counts.interviewing, stage: 'interview' }
+            ]).map(item => (
+              <button key={item.label} type="button" className="min-h-24 rounded-xl border border-border bg-background/60 p-4 text-start hover:border-primary/50"
+                onClick={() => { setTab('candidates'); setCandidateStage(item.stage); setSearch('') }}>
+                <span className="block text-sm text-muted-foreground">{item.label}</span>
+                <span className="mt-2 block text-2xl font-bold tabular-nums">{item.count}</span>
+              </button>
+            ))}
+          </div>
+        </section>
         {(notice || error) && (
           <div role={error ? 'alert' : 'status'} className={'flex items-center justify-between rounded-xl border px-4 py-3 text-sm ' + (error ? 'border-destructive/50 text-destructive' : 'border-primary/40 text-foreground')}>
             <span>{error || notice}</span>
@@ -304,6 +327,17 @@ export function RecruitmentDashboard({
             </div>
           ) : (
             <div className="p-4 sm:p-5">
+              <div className="mb-4 flex flex-wrap gap-2">
+                {(['all','new','screening','shortlisted','interview','offer','hired'] as const).map(stage => (
+                  <button key={stage} type="button" aria-pressed={candidateStage === stage}
+                    onClick={() => setCandidateStage(stage)}
+                    className={'rounded-full border px-3 py-1.5 text-xs font-medium ' +
+                      (candidateStage === stage ? 'border-primary bg-primary/10 text-primary' :
+                        'border-border text-muted-foreground hover:text-foreground')}>
+                    {stage === 'all' ? t.candidateFilterAll : t[stage]}
+                  </button>
+                ))}
+              </div>
               {filteredApplications.length ? (
                 <div className="grid gap-3">
                   {filteredApplications.map(app => (
