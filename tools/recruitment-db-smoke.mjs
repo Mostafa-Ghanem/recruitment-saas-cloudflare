@@ -16,6 +16,10 @@ const integrityMigration = fileURLToPath(new URL(
   '../packages/db/migrations/20261102202000_recruitment_application_uniqueness/migration.sql', import.meta.url
 ))
 db.exec(readFileSync(integrityMigration, 'utf8'))
+const publicIntakeMigration = fileURLToPath(new URL(
+  '../packages/db/migrations/20261102213000_recruitment_public_intake/migration.sql', import.meta.url
+))
+db.exec(readFileSync(publicIntakeMigration, 'utf8'))
 
 function addJob(id, workspaceId, status = 'draft') {
   db.prepare(`INSERT INTO recruitment_jobs
@@ -83,9 +87,56 @@ assert.equal(actualJobCount,154)
 assert.equal(visibleApplicationCount,250)
 assert.equal(actualApplicationCount,253)
 
+// A public job is NOT enough to enable public intake: opt-in table is empty.
+assert.equal(db.prepare('SELECT COUNT(*) AS n FROM recruitment_application_settings').get().n, 0)
+
+// An application key may be used only once per tenant, even across jobs.
+db.prepare('UPDATE recruitment_applications SET submission_key=? WHERE id=?')
+  .run('test-key-one','valid')
+assert.throws(
+  () => db.prepare(`INSERT INTO recruitment_applications
+    (id,workspace_id,job_id,candidate_id,submission_key,created_at,updated_at)
+    VALUES (?,?,?,?,?,?,?)`)
+    .run('duplicate-token','workspace-a','a-live','a-candidate','test-key-one','now','now'),
+  /UNIQUE/
+)
+
+// Existing candidate index prevents concurrent contact identity reuse.
+db.prepare("UPDATE recruitment_candidates SET email='unique@example.test' WHERE id='a-candidate'").run()
+assert.throws(
+  () => db.prepare(`INSERT INTO recruitment_candidates
+    (id,workspace_id,full_name,email,phone,created_at) VALUES (?,?,?,?,?,?)`)
+    .run('duplicate-email','workspace-a','Other person','unique@example.test','','now'),
+  /UNIQUE/
+)
+
+// Stage history is tenant bound and cannot attach to another workspace's app.
+db.prepare(`INSERT INTO recruitment_stage_history
+  (id,workspace_id,application_id,from_stage,to_stage,actor_user_id,created_at)
+  VALUES (?,?,?,NULL,'new',NULL,?)`).run('stage-1','workspace-a','valid','now')
+assert.throws(
+  () => db.prepare(`INSERT INTO recruitment_stage_history
+    (id,workspace_id,application_id,from_stage,to_stage,actor_user_id,created_at)
+    VALUES (?,?,?,'new','interview','actor','now')`)
+    .run('cross-tenant-history','workspace-b','valid'),
+  /FOREIGN KEY/
+)
+assert.equal(db.prepare('SELECT COUNT(*) AS n FROM recruitment_stage_history WHERE workspace_id=?')
+  .get('workspace-a').n, 1)
+
+// Rate limit counter should increment on the same key, not reset indefinitely.
+db.prepare('INSERT INTO recruitment_apply_rate_limits(key,hits,expires_at) VALUES (?,?,?)')
+  .run('hash-example',1,1000)
+const hits = db.prepare(`INSERT INTO recruitment_apply_rate_limits(key,hits,expires_at)
+  VALUES (?,1,?) ON CONFLICT(key) DO UPDATE SET
+    hits=CASE WHEN expires_at <= ? THEN 1 ELSE hits+1 END,
+    expires_at=CASE WHEN expires_at <= ? THEN excluded.expires_at ELSE expires_at END
+  RETURNING hits`).get('hash-example', 1000, 500, 500)
+assert.equal(hits.hits,2)
+
 db.prepare('DELETE FROM workspaces WHERE id=?').run('workspace-a')
 assert.equal(db.prepare('SELECT COUNT(*) as n FROM recruitment_jobs WHERE workspace_id=?').get('workspace-a').n,0)
 assert.equal(db.prepare('SELECT COUNT(*) as n FROM recruitment_candidates WHERE workspace_id=?').get('workspace-a').n,0)
 assert.equal(db.prepare('SELECT COUNT(*) as n FROM recruitment_applications WHERE workspace_id=?').get('workspace-a').n,0)
 db.close()
-console.log('PASS: migrations, tenant isolation, duplicate prevention, accurate aggregate counts, statuses, cascade deletion')
+console.log('PASS: ATS migrations, tenant isolation, idempotency, identity uniqueness, stage audit, rate limit, aggregate counts, cascade deletion')
