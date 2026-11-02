@@ -139,7 +139,7 @@ export async function submitPublicApplicationHandler(input: PublicApplyInput): P
   const applicationId = crypto.randomUUID()
   const sources = [input.utmSource, input.utmMedium, input.utmCampaign, input.utmContent]
     .map(value => trim(value, 120, 'campaign source'))
-  const statements: D1PreparedStatement[] = []
+  const statements: Array<ReturnType<typeof db.prepare>> = []
   if (!existing) {
     statements.push(db.prepare(`INSERT INTO recruitment_candidates
       (id,workspace_id,full_name,email,phone,created_at) VALUES (?,?,?,?,?,?)`)
