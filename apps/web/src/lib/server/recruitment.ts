@@ -32,6 +32,7 @@ export type RecruitmentApplication = {
 export type RecruitmentOverview = {
   jobs: RecruitmentJob[]
   applications: RecruitmentApplication[]
+  settings: { acceptApplications: boolean; privacyPolicyUrl: string; runtimeConfigured: boolean }
   viewer: { role: string }
   counts: { jobs: number; published: number; applications: number; interviewing: number }
 }
@@ -112,4 +113,17 @@ export const moveRecruitmentApplicationServerFn = createServerFn({ method: 'POST
   .handler(async ({ data }): Promise<void> => {
     const { moveRecruitmentApplicationHandler } = await import('./recruitment.effects')
     return moveRecruitmentApplicationHandler(data)
+  })
+
+const SaveApplicationSettingsInput = Schema.Struct({
+  workspaceSlug: Schema.NonEmptyString,
+  privacyPolicyUrl: Schema.String,
+  acceptApplications: Schema.Boolean
+})
+
+export const saveRecruitmentApplicationSettingsServerFn = createServerFn({ method: 'POST' })
+  .validator(Schema.decodeUnknownSync(SaveApplicationSettingsInput))
+  .handler(async ({ data }): Promise<void> => {
+    const { saveRecruitmentApplicationSettingsHandler } = await import('./recruitment.effects')
+    return saveRecruitmentApplicationSettingsHandler(data)
   })
