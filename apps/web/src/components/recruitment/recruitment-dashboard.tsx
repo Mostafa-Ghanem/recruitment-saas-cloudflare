@@ -44,7 +44,7 @@ const words = {
     saveCandidate: 'إضافة المرشح', quickJob: 'إنشاء وظيفة', quickCandidate: 'مرشح جديد',
     jobHint: 'المسمى الوظيفي فقط مطلوب. تقدر تكمل باقي التفاصيل بعدين.',
     candidateHint: 'الاسم وطريقة واحدة للتواصل كفاية.',
-    saved: 'تم الحفظ بنجاح', failed: 'تعذر حفظ التغيير. حاول مرة أخرى.',
+    saved: 'تم الحفظ بنجاح', alreadyExists: 'المرشح متقدم بالفعل للوظيفة، لم يتم تكرار طلبه.', failed: 'تعذر حفظ التغيير. حاول مرة أخرى.',
     noMatches: 'مفيش نتائج مطابقة', apply: 'طلب توظيف', chooseJob: 'اختر الوظيفة',
     open: 'مفتوحة', warning: 'الوظائف والمرشحون هنا خاصون بالشركة الحالية.',
     new: 'جديد', screening: 'مراجعة', shortlisted: 'القائمة المختصرة',
@@ -70,7 +70,7 @@ const words = {
     saveCandidate: 'Add candidate', quickJob: 'Create job', quickCandidate: 'New candidate',
     jobHint: 'Only the job title is required. You can fill in the details later.',
     candidateHint: 'A name and one contact method are enough.',
-    saved: 'Saved successfully', failed: 'Could not save your changes. Please retry.',
+    saved: 'Saved successfully', alreadyExists: 'This candidate already applied to this job. No duplicate was created.', failed: 'Could not save your changes. Please retry.',
     noMatches: 'No results match your search', apply: 'Application', chooseJob: 'Choose a job',
     open: 'Open', warning: 'Jobs and candidates are private to this workspace.',
     new: 'New', screening: 'Screening', shortlisted: 'Shortlisted',
@@ -119,9 +119,10 @@ export function RecruitmentDashboard({
     setError('')
     setNotice('')
     try {
-      await action()
+      const result = await action()
       await router.invalidate()
-      setNotice(t.saved)
+      setNotice(result && typeof result === 'object' && 'alreadyExists' in result &&
+        result.alreadyExists === true ? t.alreadyExists : t.saved)
       if (close) {
         setDialog(null)
         setJob(initialJob)
