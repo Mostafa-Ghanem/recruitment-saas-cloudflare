@@ -305,7 +305,7 @@ export function RecruitmentDashboard({
                       </div>
                       {item.description && <p className="mb-4 line-clamp-2 text-sm text-muted-foreground">{item.description}</p>}
                       <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-3">
-                        <span className="text-xs text-muted-foreground">{data.applications.filter(a => a.job_id === item.id).length} {t.apply}</span>
+                        <span className="text-xs text-muted-foreground">{item.application_count} {t.apply}</span>
                         <div className="flex flex-wrap gap-2">
                           <button type="button" disabled={busy} className={pill + ' min-h-9 px-3 text-xs'}
                             onClick={() => editJob(item)}>{t.editJob}</button>
