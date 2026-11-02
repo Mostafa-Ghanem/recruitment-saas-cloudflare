@@ -14,7 +14,7 @@ export async function loadPublicCareersHandler(input: {
   if (!slug || slug.length > 120 || !env.DB) {
     return { company: '', slug, jobs: [], applicationConfig: disabled }
   }
-  const workspace = await env.DB.prepare('SELECT id,name FROM workspaces WHERE slug=? LIMIT 1')
+  const workspace = await env.DB.prepare('SELECT id,name FROM workspaces WHERE slug=? AND suspensionStatus='active' LIMIT 1')
     .bind(slug).first<{ id: string; name: string }>()
   if (!workspace) {
     return { company: '', slug, jobs: [], applicationConfig: disabled }
