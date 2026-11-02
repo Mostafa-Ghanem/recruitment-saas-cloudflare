@@ -35,6 +35,7 @@ async function authorizedWorkspace(slug: string): Promise<{
   workspaceId: string
   role: string
   db: D1Database
+  actorUserId: string
 }> {
   const session = await requireRequestSession()
   const result = await runWorkspaceCapabilities(
@@ -49,7 +50,7 @@ async function authorizedWorkspace(slug: string): Promise<{
   if (!env.DB) {
     throw new Error('Recruitment requires a configured Cloudflare D1 database')
   }
-  return { ...result, db: env.DB }
+  return { ...result, actorUserId: session.user.id, db: env.DB }
 }
 
 export async function loadRecruitmentHandler(input: {
@@ -213,14 +214,35 @@ export async function moveRecruitmentApplicationHandler(input: {
   applicationId: string
   stage: string
 }): Promise<void> {
-  const { workspaceId, db } = await authorizedWorkspace(input.workspaceSlug)
+  const { workspaceId, actorUserId, db } = await authorizedWorkspace(input.workspaceSlug)
   if (!STAGES.has(input.stage)) {
     throw new Error('Validation: unsupported recruitment stage')
   }
-  const update = await db.prepare(`UPDATE recruitment_applications
-    SET stage=?,updated_at=? WHERE workspace_id=? AND id=?`)
-    .bind(input.stage,new Date().toISOString(),workspaceId,input.applicationId).run()
-  if (update.meta.changes === 0) throw new Error('Application not found in this workspace')
+  const application = await db.prepare(`SELECT stage FROM recruitment_applications
+    WHERE workspace_id=? AND id=? LIMIT 1`)
+    .bind(workspaceId, input.applicationId).first<{ stage: string }>()
+  if (!application) throw new Error('Application not found in this workspace')
+  if (application.stage === input.stage) return
+
+  const now = new Date().toISOString()
+  // The conditional update is optimistic: simultaneous edits cannot silently
+  // both claim the same old stage. D1 batches are transactional, including the
+  // audit INSERT that follows the UPDATE. A zero-row update must fail the
+  // transaction rather than creating an inaccurate history row.
+  const [update] = await db.batch([
+    db.prepare(`UPDATE recruitment_applications
+      SET stage=?,updated_at=? WHERE workspace_id=? AND id=? AND stage=?`)
+      .bind(input.stage,now,workspaceId,input.applicationId,application.stage),
+    db.prepare(`INSERT INTO recruitment_stage_history
+      (id,workspace_id,application_id,from_stage,to_stage,actor_user_id,created_at)
+      SELECT ?,workspace_id,id,stage,?,?,? FROM recruitment_applications
+      WHERE workspace_id=? AND id=? AND stage=?`)
+      .bind(crypto.randomUUID(),application.stage,input.stage,actorUserId,now,
+        workspaceId,input.applicationId,input.stage)
+  ])
+  if (update.meta.changes === 0) {
+    throw new Error('Application was updated by another user. Refresh and try again')
+  }
 }
 
 /** Only company owners/admins can enable intake, and only with HTTPS privacy URL. */
