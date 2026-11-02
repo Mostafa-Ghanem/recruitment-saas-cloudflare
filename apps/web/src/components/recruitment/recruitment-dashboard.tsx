@@ -54,6 +54,7 @@ const words = {
     interview: 'مقابلة', offer: 'عرض', hired: 'تم التوظيف',
     rejected: 'مرفوض', withdrawn: 'انسحب', candidatesTotal: 'طلبات التوظيف',
     attentionTitle: 'تحتاج انتباهك', attentionIntro: 'ابدأ بالطلبات التي تحتاج إجراء، بدل البحث في القوائم.', attentionNew: 'طلبات جديدة', attentionStale: 'طلبات متأخرة أكثر من 48 ساعة', attentionInterviews: 'في مرحلة المقابلة', candidateFilterAll: 'كل المراحل',
+    publishRequirements: 'قبل نشر الوظيفة، أضف المدينة ووصفًا وظيفيًا واضحًا لا يقل عن 80 حرفًا. يمكنك حفظها كمسودة الآن.',
     privacyTitle: 'إعدادات استقبال التقديمات', privacyBody: 'لن يظهر نموذج التقديم حتى تضيف سياسة الخصوصية وتفعّل الاستقبال وتكتمل حماية الموقع.',
     privacyUrlLabel: 'رابط سياسة الخصوصية للشركة (HTTPS)', privacyEnable: 'السماح باستقبال طلبات التوظيف',
     privacyConfigured: 'حماية التقديم مهيّأة على السيرفر', privacyNotConfigured: 'حماية التقديم لم تُفعّل بعد على السيرفر — سيظل النموذج مغلقًا.',
@@ -85,6 +86,7 @@ const words = {
     interview: 'Interview', offer: 'Offer', hired: 'Hired',
     rejected: 'Rejected', withdrawn: 'Withdrawn', candidatesTotal: 'Applications',
     attentionTitle: 'Needs your attention', attentionIntro: 'Start with the applications that need action.', attentionNew: 'New applications', attentionStale: 'Waiting over 48 hours', attentionInterviews: 'In interview stage', candidateFilterAll: 'All stages',
+    publishRequirements: 'Add a location and a clear job description (at least 80 characters) before publishing. You can save a draft now.',
     privacyTitle: 'Application settings', privacyBody: 'Public application forms stay hidden until your privacy policy, company opt-in and security keys are configured.',
     privacyUrlLabel: 'Company privacy policy URL (HTTPS)', privacyEnable: 'Accept applications',
     privacyConfigured: 'Server security keys are configured', privacyNotConfigured: 'Public intake is not configured on the server. Applications will remain disabled.',
@@ -152,8 +154,9 @@ export function RecruitmentDashboard({
         setEditingJobId(null)
         setCandidate(initialCandidate)
       }
-    } catch {
-      setError(t.failed)
+    } catch (reason) {
+      setError(reason instanceof Error && reason.message.includes('PUBLISH_DETAILS_REQUIRED')
+        ? t.publishRequirements : t.failed)
     } finally {
       setBusy(false)
     }
