@@ -56,7 +56,7 @@ export async function loadRecruitmentHandler(input: {
   workspaceSlug: string
 }): Promise<RecruitmentOverview> {
   const { workspaceId, role, db } = await authorizedWorkspace(input.workspaceSlug)
-  const [jobResult, applicationResult] = await db.batch([
+  const [jobResult, applicationResult, countResult] = await db.batch([
     db.prepare(`SELECT id,title,department,location,employment_type,description,status,created_at,updated_at
       FROM recruitment_jobs WHERE workspace_id=? ORDER BY created_at DESC,id DESC LIMIT 150`).bind(workspaceId),
     db.prepare(`SELECT a.id,a.candidate_id,c.full_name,c.email,c.phone,
@@ -64,17 +64,23 @@ export async function loadRecruitmentHandler(input: {
       FROM recruitment_applications a
       JOIN recruitment_candidates c ON c.id=a.candidate_id AND c.workspace_id=a.workspace_id
       JOIN recruitment_jobs j ON j.id=a.job_id AND j.workspace_id=a.workspace_id
-      WHERE a.workspace_id=? ORDER BY a.created_at DESC,a.id DESC LIMIT 250`).bind(workspaceId)
+      WHERE a.workspace_id=? ORDER BY a.created_at DESC,a.id DESC LIMIT 250`).bind(workspaceId),
+    db.prepare(`SELECT
+      (SELECT COUNT(*) FROM recruitment_jobs WHERE workspace_id=?) AS jobs_count,
+      (SELECT COUNT(*) FROM recruitment_jobs WHERE workspace_id=? AND status='published') AS published_count,
+      (SELECT COUNT(*) FROM recruitment_applications WHERE workspace_id=?) AS applications_count,
+      (SELECT COUNT(*) FROM recruitment_applications WHERE workspace_id=? AND stage='interview') AS interviewing_count
+    `).bind(workspaceId, workspaceId, workspaceId, workspaceId)
   ])
   const jobs = jobResult.results as RecruitmentJob[]
   const applications = applicationResult.results as RecruitmentApplication[]
   return {
     jobs, applications, viewer: { role },
     counts: {
-      jobs: jobs.length,
-      published: jobs.filter((job) => job.status === 'published').length,
-      applications: applications.length,
-      interviewing: applications.filter((application) => application.stage === 'interview').length
+      jobs: Number((countResult.results[0] as Record<string, unknown>)?.jobs_count ?? 0),
+      published: Number((countResult.results[0] as Record<string, unknown>)?.published_count ?? 0),
+      applications: Number((countResult.results[0] as Record<string, unknown>)?.applications_count ?? 0),
+      interviewing: Number((countResult.results[0] as Record<string, unknown>)?.interviewing_count ?? 0)
     }
   }
 }
@@ -118,12 +124,13 @@ export async function editRecruitmentJobHandler(input: {
   if (title.length < 3 || !EMPLOYMENT_TYPES.has(input.employmentType)) {
     throw new Error('Validation: job title or employment type is invalid')
   }
-  await db.prepare(`UPDATE recruitment_jobs
+  const update = await db.prepare(`UPDATE recruitment_jobs
     SET title=?,department=?,location=?,employment_type=?,description=?,updated_at=?
     WHERE workspace_id=? AND id=?`)
     .bind(title,clean(input.department,100),clean(input.location,100),
       input.employmentType,clean(input.description,10000),new Date().toISOString(),
       workspaceId,input.jobId).run()
+  if (update.meta.changes === 0) throw new Error('Job not found in this workspace')
 }
 
 export async function updateRecruitmentJobStatusHandler(input: {
@@ -135,9 +142,10 @@ export async function updateRecruitmentJobStatusHandler(input: {
   if (!STATUSES.has(input.status)) {
     throw new Error('Validation: unsupported job status')
   }
-  await db.prepare(`UPDATE recruitment_jobs SET status=?,updated_at=?
+  const update = await db.prepare(`UPDATE recruitment_jobs SET status=?,updated_at=?
     WHERE workspace_id=? AND id=?`)
     .bind(input.status, new Date().toISOString(), workspaceId, input.jobId).run()
+  if (update.meta.changes === 0) throw new Error('Job not found in this workspace')
 }
 
 export async function addRecruitmentCandidateHandler(input: {
@@ -180,7 +188,8 @@ export async function moveRecruitmentApplicationHandler(input: {
   if (!STAGES.has(input.stage)) {
     throw new Error('Validation: unsupported recruitment stage')
   }
-  await db.prepare(`UPDATE recruitment_applications
+  const update = await db.prepare(`UPDATE recruitment_applications
     SET stage=?,updated_at=? WHERE workspace_id=? AND id=?`)
     .bind(input.stage,new Date().toISOString(),workspaceId,input.applicationId).run()
+  if (update.meta.changes === 0) throw new Error('Application not found in this workspace')
 }
