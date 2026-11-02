@@ -1378,6 +1378,8 @@ export const recruitmentCandidates = sqliteTable(
   },
   (table) => [
     uniqueIndex('recruitment_candidates_workspace_id_id_uidx').on(table.workspaceId, table.id),
+    uniqueIndex('recruitment_candidates_workspace_email_uidx').on(table.workspaceId, table.email).where(sql`email <> ''`),
+    uniqueIndex('recruitment_candidates_workspace_phone_name_uidx').on(table.workspaceId, table.phone, table.fullName).where(sql`phone <> ''`),
     index('recruitment_candidates_workspace_created_idx').on(table.workspaceId, table.createdAt)
   ]
 )
@@ -1390,6 +1392,11 @@ export const recruitmentApplications = sqliteTable(
     jobId: text('job_id').notNull(),
     candidateId: text('candidate_id').notNull(),
     stage: text('stage').notNull().default('new'),
+    submissionKey: text('submission_key'),
+    utmSource: text('utm_source').notNull().default(''),
+    utmMedium: text('utm_medium').notNull().default(''),
+    utmCampaign: text('utm_campaign').notNull().default(''),
+    utmContent: text('utm_content').notNull().default(''),
     createdAt: isoCreatedAt(),
     updatedAt: text('updated_at').notNull()
   },
@@ -1406,9 +1413,53 @@ export const recruitmentApplications = sqliteTable(
       foreignColumns: [recruitmentCandidates.workspaceId, recruitmentCandidates.id]
     }).onDelete('cascade'),
     uniqueIndex('recruitment_applications_workspace_job_candidate_uidx').on(table.workspaceId, table.jobId, table.candidateId),
+    uniqueIndex('recruitment_applications_workspace_submission_uidx').on(table.workspaceId, table.submissionKey).where(sql`submission_key IS NOT NULL`),
     index('recruitment_applications_workspace_stage_idx').on(table.workspaceId, table.stage),
     index('recruitment_applications_workspace_created_idx').on(table.workspaceId, table.createdAt),
     index('recruitment_applications_workspace_job_idx').on(table.workspaceId, table.jobId),
     index('recruitment_applications_workspace_candidate_idx').on(table.workspaceId, table.candidateId)
   ]
+)
+
+/** Tenant privacy and intake settings: disabled until explicitly opted in. */
+export const recruitmentApplicationSettings = sqliteTable(
+  'recruitment_application_settings',
+  {
+    workspaceId: workspaceRef().primaryKey(),
+    acceptApplications: integer('accept_applications').notNull().default(0),
+    privacyPolicyUrl: text('privacy_policy_url').notNull().default(''),
+    updatedAt: text('updated_at').notNull()
+  }
+)
+
+export const recruitmentStageHistory = sqliteTable(
+  'recruitment_stage_history',
+  {
+    id: id(),
+    workspaceId: workspaceRef(),
+    applicationId: text('application_id').notNull(),
+    fromStage: text('from_stage'),
+    toStage: text('to_stage').notNull(),
+    actorUserId: text('actor_user_id'),
+    createdAt: isoCreatedAt()
+  },
+  (table) => [
+    foreignKey({
+      name: 'recruitment_stage_history_workspace_application_fk',
+      columns: [table.workspaceId, table.applicationId],
+      foreignColumns: [recruitmentApplications.workspaceId, recruitmentApplications.id]
+    }).onDelete('cascade'),
+    index('recruitment_stage_history_workspace_application_idx').on(
+      table.workspaceId, table.applicationId, table.createdAt
+    )
+  ]
+)
+
+export const recruitmentApplyRateLimits = sqliteTable(
+  'recruitment_apply_rate_limits',
+  {
+    key: text('key').primaryKey(),
+    hits: integer('hits').notNull().default(0),
+    expiresAt: integer('expires_at').notNull()
+  }
 )
