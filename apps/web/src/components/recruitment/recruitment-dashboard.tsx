@@ -130,7 +130,9 @@ export function RecruitmentDashboard({
     [item.title, item.department, item.location].join(' ').toLocaleLowerCase().includes(search.trim().toLocaleLowerCase())
   ), [data.jobs, filter, search])
   const filteredApplications = useMemo(() => data.applications.filter((item) =>
-    (candidateStage === 'all' || item.stage === candidateStage) &&
+    (candidateStage === 'all' || item.stage === candidateStage ||
+      (candidateStage === 'stale' && item.stage === 'new' &&
+        new Date(item.created_at).getTime() < Date.now() - 48 * 60 * 60 * 1000)) &&
     [item.full_name, item.phone, item.email, item.job_title].join(' ').toLocaleLowerCase().includes(search.trim().toLocaleLowerCase())
   ), [data.applications, search, candidateStage])
 
@@ -241,7 +243,7 @@ export function RecruitmentDashboard({
           <div className="grid gap-3 sm:grid-cols-3">
             {([
               { label: t.attentionNew, count: data.counts.newApplications, stage: 'new' },
-              { label: t.attentionStale, count: data.counts.staleApplications, stage: 'new' },
+              { label: t.attentionStale, count: data.counts.staleApplications, stage: 'stale' },
               { label: t.attentionInterviews, count: data.counts.interviewing, stage: 'interview' }
             ]).map(item => (
               <button key={item.label} type="button" className="min-h-24 rounded-xl border border-border bg-background/60 p-4 text-start hover:border-primary/50"
@@ -328,13 +330,13 @@ export function RecruitmentDashboard({
           ) : (
             <div className="p-4 sm:p-5">
               <div className="mb-4 flex flex-wrap gap-2">
-                {(['all','new','screening','shortlisted','interview','offer','hired'] as const).map(stage => (
+                {(['all','new','stale','screening','shortlisted','interview','offer','hired'] as const).map(stage => (
                   <button key={stage} type="button" aria-pressed={candidateStage === stage}
                     onClick={() => setCandidateStage(stage)}
                     className={'rounded-full border px-3 py-1.5 text-xs font-medium ' +
                       (candidateStage === stage ? 'border-primary bg-primary/10 text-primary' :
                         'border-border text-muted-foreground hover:text-foreground')}>
-                    {stage === 'all' ? t.candidateFilterAll : t[stage]}
+                    {stage === 'all' ? t.candidateFilterAll : stage === 'stale' ? t.attentionStale : t[stage]}
                   </button>
                 ))}
               </div>
