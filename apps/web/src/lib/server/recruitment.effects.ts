@@ -56,7 +56,7 @@ export async function loadRecruitmentHandler(input: {
   workspaceSlug: string
 }): Promise<RecruitmentOverview> {
   const { workspaceId, role, db } = await authorizedWorkspace(input.workspaceSlug)
-  const [jobResult, applicationResult, countResult] = await db.batch([
+  const [jobResult, applicationResult, countResult, settingsResult] = await db.batch([
     db.prepare(`SELECT id,title,department,location,employment_type,description,status,created_at,updated_at
       FROM recruitment_jobs WHERE workspace_id=? ORDER BY created_at DESC,id DESC LIMIT 150`).bind(workspaceId),
     db.prepare(`SELECT a.id,a.candidate_id,c.full_name,c.email,c.phone,
@@ -70,12 +70,20 @@ export async function loadRecruitmentHandler(input: {
       (SELECT COUNT(*) FROM recruitment_jobs WHERE workspace_id=? AND status='published') AS published_count,
       (SELECT COUNT(*) FROM recruitment_applications WHERE workspace_id=?) AS applications_count,
       (SELECT COUNT(*) FROM recruitment_applications WHERE workspace_id=? AND stage='interview') AS interviewing_count
-    `).bind(workspaceId, workspaceId, workspaceId, workspaceId)
+    `).bind(workspaceId, workspaceId, workspaceId, workspaceId),
+    db.prepare(`SELECT accept_applications,privacy_policy_url
+      FROM recruitment_application_settings WHERE workspace_id=?`).bind(workspaceId)
   ])
   const jobs = jobResult.results as RecruitmentJob[]
   const applications = applicationResult.results as RecruitmentApplication[]
   return {
     jobs, applications, viewer: { role },
+    settings: {
+      acceptApplications: settingsResult.results[0]?.accept_applications === 1,
+      privacyPolicyUrl: String(settingsResult.results[0]?.privacy_policy_url ?? ''),
+      runtimeConfigured: env.RECRUITMENT_PUBLIC_APPLY_ENABLED === 'true' &&
+        Boolean(env.TURNSTILE_SITE_KEY && env.TURNSTILE_SECRET_KEY)
+    },
     counts: {
       jobs: Number((countResult.results[0] as Record<string, unknown>)?.jobs_count ?? 0),
       published: Number((countResult.results[0] as Record<string, unknown>)?.published_count ?? 0),
@@ -213,4 +221,30 @@ export async function moveRecruitmentApplicationHandler(input: {
     SET stage=?,updated_at=? WHERE workspace_id=? AND id=?`)
     .bind(input.stage,new Date().toISOString(),workspaceId,input.applicationId).run()
   if (update.meta.changes === 0) throw new Error('Application not found in this workspace')
+}
+
+/** Only company owners/admins can enable intake, and only with HTTPS privacy URL. */
+export async function saveRecruitmentApplicationSettingsHandler(input: {
+  workspaceSlug: string
+  privacyPolicyUrl: string
+  acceptApplications: boolean
+}): Promise<void> {
+  const { workspaceId, db } = await authorizedWorkspace(input.workspaceSlug)
+  const urlString = clean(input.privacyPolicyUrl, 1000)
+  if (input.acceptApplications || urlString) {
+    let url: URL
+    try { url = new URL(urlString) } catch { throw new Error('Enter a valid HTTPS privacy policy URL') }
+    if (url.protocol !== 'https:' || url.username || url.password || url.hash ||
+        url.hostname === 'localhost' || url.hostname === '127.0.0.1') {
+      throw new Error('Privacy policy must use an ordinary public HTTPS URL')
+    }
+  }
+  await db.prepare(`INSERT INTO recruitment_application_settings
+    (workspace_id,accept_applications,privacy_policy_url,updated_at)
+    VALUES (?,?,?,?)
+    ON CONFLICT(workspace_id) DO UPDATE SET
+      accept_applications=excluded.accept_applications,
+      privacy_policy_url=excluded.privacy_policy_url,
+      updated_at=excluded.updated_at`)
+    .bind(workspaceId, input.acceptApplications ? 1 : 0, urlString, new Date().toISOString()).run()
 }
