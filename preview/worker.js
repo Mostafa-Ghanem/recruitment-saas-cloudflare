@@ -29,7 +29,7 @@ function frame(title,content,nonce,withClient=false) {
  '@media(max-width:1050px){.app{grid-template-columns:1fr}.side{display:flex;padding:14px 20px;align-items:center;gap:20px}.brand{margin:0;font-size:16px}.side nav{display:flex;gap:5px}.navitem{width:auto;margin:0;padding:8px 12px}.sidebottom{display:none}.kpis{grid-template-columns:repeat(2,1fr)}}@media(max-width:640px){.main{padding:24px 14px 60px}.top{margin-bottom:25px}.heading{align-items:flex-start}.heading .actions{width:100%}.heading .actions button{flex:1}.listing{grid-template-columns:1fr}.panel{padding:14px}.search{width:100%}.kpis{gap:9px}.kpi{padding:16px}.kpi b{font-size:26px}.side{padding:11px}.brand{font-size:14px}.navitem{font-size:12px}.stack{grid-template-columns:1fr}.dialog{padding:21px}.candidate{align-items:flex-start}}'
  ].join('');
  const script = withClient ? '<script nonce="'+nonce+'">('+clientApp.toString()+')()</script>' : '';
- return '<!doctype html><html lang="ar" dir="rtl"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>'+escapeHtml(title)+'</title><style>'+style+'</style></head><body>'+content+script+'</body></html>';
+ return '<!doctype html><html lang="ar" dir="rtl"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>'+escapeHtml(title)+'</title><style>'+style+'</style></head><body>'+content+script+'</body></html>';
 }
 function loginPage(error,nonce) {
  return frame('تجربة التوظيف | تسجيل الدخول',
