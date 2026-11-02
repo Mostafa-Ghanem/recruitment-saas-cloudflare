@@ -2,6 +2,7 @@ import { createFileRoute } from '@tanstack/react-router'
 import { useState } from 'react'
 import { BriefcaseBusinessIcon, MapPinIcon, ArrowUpRightIcon, Globe2Icon } from 'lucide-react'
 import { publicCareersServerFn } from '@/lib/server/public-careers'
+import { PublicApplicationForm } from '@/components/recruitment/public-application-form'
 
 export const Route = createFileRoute('/careers/$workspaceSlug')({
   loader: ({ params }) => publicCareersServerFn({ data: { workspaceSlug: params.workspaceSlug } }),
@@ -18,6 +19,7 @@ export const Route = createFileRoute('/careers/$workspaceSlug')({
 function CareersRoute() {
   const data = Route.useLoaderData()
   const [locale, setLocale] = useState<'ar'|'en'>('ar')
+  const [activeJobId, setActiveJobId] = useState<string | null>(null)
   const ar = locale === 'ar'
   return (
     <main lang={ar ? 'ar-SA' : 'en'} dir={ar ? 'rtl' : 'ltr'} className="min-h-dvh bg-background text-foreground">
@@ -65,10 +67,32 @@ function CareersRoute() {
                   </span>
                 </div>
                 {job.description && <p className="mt-5 whitespace-pre-wrap text-sm leading-7 text-muted-foreground">{job.description}</p>}
-                <div className="mt-5 flex items-center gap-2 border-t border-border pt-4 text-sm text-muted-foreground">
-                  <ArrowUpRightIcon className="size-4" />
-                  {ar ? 'التقديم الإلكتروني لهذه الوظيفة سيتم تفعيله قريبًا.' : 'Online applications for this role will open soon.'}
+                <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4">
+                  <p className="text-xs text-muted-foreground">
+                    {data.applicationConfig.enabled
+                      ? (ar ? 'تقديم سريع بدون إنشاء حساب' : 'Quick application with no account')
+                      : (ar ? 'التقديم الإلكتروني لهذه الوظيفة لم يُفعّل بعد.' : 'Online applications are not enabled for this role yet.')}
+                  </p>
+                  {data.applicationConfig.enabled && (
+                    <button type="button" aria-expanded={activeJobId === job.id}
+                      aria-controls={'apply-' + job.id}
+                      onClick={() => setActiveJobId(activeJobId === job.id ? null : job.id)}
+                      className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-primary px-5 font-semibold text-primary-foreground hover:opacity-90">
+                      <ArrowUpRightIcon aria-hidden className="size-4"/>
+                      {activeJobId === job.id ? (ar ? 'إغلاق التقديم' : 'Close application') :
+                        (ar ? 'قدّم الآن' : 'Apply now')}
+                    </button>
+                  )}
                 </div>
+                {data.applicationConfig.enabled && activeJobId === job.id && (
+                  <div id={'apply-' + job.id}>
+                    <PublicApplicationForm key={job.id} workspaceSlug={data.slug} jobId={job.id}
+                      jobTitle={job.title} company={data.company}
+                      locale={locale} siteKey={data.applicationConfig.siteKey}
+                      privacyPolicyUrl={data.applicationConfig.privacyPolicyUrl}
+                      onClose={() => setActiveJobId(null)} />
+                  </div>
+                )}
               </article>
             ))}
           </div>
