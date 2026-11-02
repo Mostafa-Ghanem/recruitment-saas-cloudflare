@@ -104,6 +104,28 @@ export async function createRecruitmentJobHandler(input: {
   return { id }
 }
 
+export async function editRecruitmentJobHandler(input: {
+  workspaceSlug: string
+  jobId: string
+  title: string
+  department: string
+  location: string
+  description: string
+  employmentType: string
+}): Promise<void> {
+  const { workspaceId, db } = await authorizedWorkspace(input.workspaceSlug)
+  const title = clean(input.title, 150)
+  if (title.length < 3 || !EMPLOYMENT_TYPES.has(input.employmentType)) {
+    throw new Error('Validation: job title or employment type is invalid')
+  }
+  await db.prepare(`UPDATE recruitment_jobs
+    SET title=?,department=?,location=?,employment_type=?,description=?,updated_at=?
+    WHERE workspace_id=? AND id=?`)
+    .bind(title,clean(input.department,100),clean(input.location,100),
+      input.employmentType,clean(input.description,10000),new Date().toISOString(),
+      workspaceId,input.jobId).run()
+}
+
 export async function updateRecruitmentJobStatusHandler(input: {
   workspaceSlug: string
   jobId: string
