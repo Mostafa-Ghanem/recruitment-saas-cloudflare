@@ -93,8 +93,27 @@ function clientApp() {
   catch(err){s.error=err.message;render();}
  }
  async function send(body) {
-  try{const r=await fetch('/api/action',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...body,tenant:s.tenant})});const j=await r.json();if(!r.ok)throw Error(j.error||'تعذر الحفظ');s.dialog=null;s.editing=null;s.error='';s.message=s.lang==='ar'?'تم حفظ التغييرات بنجاح':'Changes saved';await load();}
-  catch(err){s.error=err.message;render();}
+  try{
+   const jobs=s.data.jobs,apps=s.data.applications,action=body.action;
+   if(action==='createJob'){
+    const id='local-'+crypto.randomUUID();
+    jobs.unshift({id,title:String(body.title||'').trim(),department:body.department||'',location:body.location||'',employment_type:body.employment_type||'full_time',description:body.description||'',status:'draft',created_at:new Date().toISOString()});
+   }else if(action==='editJob'){
+    const job=jobs.find(j=>j.id===body.jobId);if(!job)throw Error('Job not found');
+    Object.assign(job,{title:body.title,department:body.department,location:body.location,employment_type:body.employment_type,description:body.description});
+   }else if(action==='status'){
+    const job=jobs.find(j=>j.id===body.jobId);if(!job)throw Error('Job not found');job.status=body.status;
+   }else if(action==='addCandidate'){
+    const job=jobs.find(j=>j.id===body.jobId);if(!job)throw Error('Job not found');
+    if(!body.full_name||!(body.email||body.phone))throw Error('Please enter a name and contact');
+    apps.unshift({id:'local-'+crypto.randomUUID(),job_id:job.id,job_title:job.title,full_name:body.full_name,phone:body.phone||'',email:body.email||'',stage:'new'});
+   }else if(action==='stage'){
+    const applicant=apps.find(a=>a.id===body.applicationId);if(!applicant)throw Error('Application not found');applicant.stage=body.stage;
+   }
+   s.dialog=null;s.editing=null;s.error='';
+   s.message=s.lang==='ar'?'تم التعديل داخل المتصفح للتجربة فقط — لن يُحفظ على السيرفر.':'Demo updated locally in this browser tab only.';
+   render();
+  }catch(err){s.error=String(err.message||'Unable to update');render();}
  }
  function jobCard(j,t){
   const count=s.data.applications.filter(a=>a.job_id===j.id).length;
@@ -167,6 +186,7 @@ function clientApp() {
   if(action==='tab'){s.tab=value;s.search='';render();}
   if(action==='filter'){s.filter=value;paintList();}
   if(action==='language'){s.lang=s.lang==='ar'?'en':'ar';render();}
+  if(action==='reset'){s.dialog=null;s.editing=null;s.message='';s.error='';void load();}
   if(action==='newJob'){s.dialog='job';s.editing=null;paintDialog();}
   if(action==='newCandidate'){if(!s.data.jobs.length){s.error='أضف وظيفة أولاً';render();return;}s.dialog='candidate';s.editing=null;paintDialog();}
   if(action==='editJob'){s.dialog='job';s.editing=s.data.jobs.find(x=>x.id===id);paintDialog();}
@@ -187,33 +207,14 @@ export default {
    const cards=rows.results.map(j=>'<article class="card" style="padding:22px;margin-top:14px"><h2>'+escapeHtml(j.title)+'</h2><p class="info">'+escapeHtml([j.location,j.department].filter(Boolean).join(' • '))+'</p><p style="line-height:2;margin-top:15px">'+escapeHtml(j.description)+'</p><p class="muted" style="margin-top:20px">التقديم من الموقع قيد التطوير.</p></article>').join('');
    return responseHtml(frame('Careers', '<main style="max-width:860px;margin:50px auto;padding:20px" dir="rtl"><a class="btn" href="/">↩ الرجوع</a><h1 style="font-size:35px;margin:35px 0 12px">الوظائف المتاحة — '+escapeHtml(tenant?.name||'')+'</h1><p class="muted">الصفحة التجريبية تعرض الوظائف المنشورة فقط.</p>'+(cards||'<div class="empty">لا توجد وظائف حاليًا</div>')+'</main>',nonce),nonce);
   }
-  if(request.method==='GET'&&url.pathname==='/health') return json({status:'ok',environment:'recruitment-preview',database:'D1'});
-  if(request.method==='POST'&&url.pathname==='/login') {
-   if(request.headers.get('Origin')!==url.origin)return new Response('Forbidden',{status:403});
-   const form=await request.formData();
-   const password=String(form.get('password')||'').slice(0,180);
-   const ok=equal(await hmac(password,'preview-verifier'),await hmac(env.PREVIEW_PASSWORD||'','preview-verifier'));
-   if(!ok)return responseHtml(loginPage(true,nonce),nonce);
-   const stamp=String(Date.now());
-   return new Response(null,{status:303,headers:{...noStore,Location:'/','Set-Cookie':'ats_preview='+stamp+'.'+await hmac(stamp,env.PREVIEW_PASSWORD)+'; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=86400'}});
-  }
-  if(request.method==='POST'&&request.headers.get('Origin')!==url.origin)return json({error:'Invalid origin'},403);
-  const authorized=await valid(request,env);
-  if(!authorized){ if(url.pathname.startsWith('/api/'))return json({error:'login_required'},401);return responseHtml(loginPage(false,nonce),nonce); }
-  if(request.method==='POST'&&url.pathname==='/logout')return new Response(null,{status:303,headers:{...noStore,Location:'/','Set-Cookie':'ats_preview=; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=0'}});
+  if(request.method==='GET'&&url.pathname==='/health') return json({status:'ok',environment:'recruitment-ux-public-demo',database:'isolated D1',data:'synthetic'});
   if(request.method==='GET'&&url.pathname==='/api/data') {
-   const data=await dashboard(env.DB,label(url.searchParams.get('tenant')||'shownova'));
-   return data?json(data):json({error:'not_found'},404);
+   const slug=label(url.searchParams.get('tenant')||'shownova');
+   if(!['shownova','aqar1'].includes(slug))return json({error:'not_found'},404);
+   const data=await dashboard(env.DB,slug);return data?json(data):json({error:'not_found'},404);
   }
-  if(request.method==='POST'&&url.pathname==='/api/action') {
-   try{
-    if(Number(request.headers.get('Content-Length')||0)>16000)return json({error:'Too large'},413);
-    const raw=await request.text();if(raw.length>16000)return json({error:'Too large'},413);
-    const data=JSON.parse(raw);if(!data||typeof data!=='object')return json({error:'Invalid input'},400);
-    await mutate(env.DB,data);return json({ok:true});
-   }catch(error){return json({error:String(error.message||'Unable to save').slice(0,170)},400);}
-  }
-  if(request.method==='GET'&&(url.pathname==='/'||url.pathname==='/index.html'))return responseHtml(frame('HireFlow Recruitment Preview','<div id="root"></div>',nonce,true),nonce);
+  if(request.method==='GET'&&(url.pathname==='/'||url.pathname==='/index.html'))return responseHtml(frame('HireFlow Recruitment UX Demo','<div id="root"></div>',nonce,true),nonce);
+  if(request.method==='POST')return json({error:'Read-only public demo: server writes are disabled'},403);
   return new Response('Not found',{status:404,headers:noStore});
  }
 };
