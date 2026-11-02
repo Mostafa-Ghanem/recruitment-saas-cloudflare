@@ -190,21 +190,35 @@ export async function addRecruitmentCandidateHandler(input: {
       WHERE workspace_id=? AND job_id=? AND candidate_id=? LIMIT 1`)
       .bind(workspaceId, input.jobId, existingCandidate.id).first()
     if (previous) return { alreadyExists: true }
-    await db.prepare(`INSERT INTO recruitment_applications
-      (id,workspace_id,job_id,candidate_id,stage,created_at,updated_at)
-      VALUES (?,?,?,?,'new',?,?)`)
-      .bind(crypto.randomUUID(), workspaceId, input.jobId, existingCandidate.id, new Date().toISOString(), new Date().toISOString()).run()
+    const applicationId = crypto.randomUUID()
+    const now = new Date().toISOString()
+    await db.batch([
+      db.prepare(`INSERT INTO recruitment_applications
+        (id,workspace_id,job_id,candidate_id,stage,created_at,updated_at)
+        VALUES (?,?,?,?,'new',?,?)`)
+        .bind(applicationId,workspaceId,input.jobId,existingCandidate.id,now,now),
+      db.prepare(`INSERT INTO recruitment_stage_history
+        (id,workspace_id,application_id,from_stage,to_stage,actor_user_id,created_at)
+        VALUES (?,?,?,NULL,'new',?,?)`)
+        .bind(crypto.randomUUID(),workspaceId,applicationId,(await requireRequestSession()).user.id,now)
+    ])
     return { alreadyExists: false }
   }
   const candidateId = crypto.randomUUID()
   const now = new Date().toISOString()
+  const applicationId = crypto.randomUUID()
+  const actorUserId = (await requireRequestSession()).user.id
   await db.batch([
     db.prepare(`INSERT INTO recruitment_candidates (id,workspace_id,full_name,email,phone,created_at)
       VALUES (?,?,?,?,?,?)`).bind(candidateId,workspaceId,fullName,email,phone,now),
     db.prepare(`INSERT INTO recruitment_applications
       (id,workspace_id,job_id,candidate_id,stage,created_at,updated_at)
       VALUES (?,?,?,?,'new',?,?)`)
-      .bind(crypto.randomUUID(),workspaceId,input.jobId,candidateId,now,now)
+      .bind(applicationId,workspaceId,input.jobId,candidateId,now,now),
+    db.prepare(`INSERT INTO recruitment_stage_history
+      (id,workspace_id,application_id,from_stage,to_stage,actor_user_id,created_at)
+      VALUES (?,?,?,NULL,'new',?,?)`)
+      .bind(crypto.randomUUID(),workspaceId,applicationId,actorUserId,now)
   ])
   return { alreadyExists: false }
 }
@@ -236,7 +250,7 @@ export async function moveRecruitmentApplicationHandler(input: {
     db.prepare(`INSERT INTO recruitment_stage_history
       (id,workspace_id,application_id,from_stage,to_stage,actor_user_id,created_at)
       SELECT ?,workspace_id,id,stage,?,?,? FROM recruitment_applications
-      WHERE workspace_id=? AND id=? AND stage=?`)
+      WHERE workspace_id=? AND id=? AND stage=? AND changes()=1`)
       .bind(crypto.randomUUID(),application.stage,input.stage,actorUserId,now,
         workspaceId,input.applicationId,input.stage)
   ])
