@@ -8,9 +8,10 @@ import { fileURLToPath } from 'node:url'
 const migration = fileURLToPath(new URL('../packages/db/migrations/20261102173000_recruitment_mvp/migration.sql', import.meta.url))
 const db = new DatabaseSync(':memory:')
 db.exec('PRAGMA foreign_keys=ON')
-db.exec('CREATE TABLE workspaces (id TEXT PRIMARY KEY)')
-db.prepare('INSERT INTO workspaces(id) VALUES (?)').run('workspace-a')
-db.prepare('INSERT INTO workspaces(id) VALUES (?)').run('workspace-b')
+db.exec(`CREATE TABLE workspaces (id TEXT PRIMARY KEY, slug TEXT NOT NULL UNIQUE,
+  suspensionStatus TEXT NOT NULL DEFAULT 'active')`)
+db.prepare('INSERT INTO workspaces(id,slug) VALUES (?,?)').run('workspace-a','workspace-a')
+db.prepare('INSERT INTO workspaces(id,slug) VALUES (?,?)').run('workspace-b','workspace-b')
 db.exec(readFileSync(migration, 'utf8'))
 const integrityMigration = fileURLToPath(new URL(
   '../packages/db/migrations/20261102202000_recruitment_application_uniqueness/migration.sql', import.meta.url
@@ -89,6 +90,20 @@ assert.equal(actualApplicationCount,253)
 
 // A public job is NOT enough to enable public intake: opt-in table is empty.
 assert.equal(db.prepare('SELECT COUNT(*) AS n FROM recruitment_application_settings').get().n, 0)
+db.prepare(`INSERT INTO recruitment_application_settings
+  (workspace_id,accept_applications,privacy_policy_url,updated_at)
+  VALUES (?,?,?,?)`).run('workspace-a',1,'https://example.test/privacy','now')
+const eligibleSql = `SELECT j.id FROM recruitment_jobs j
+  JOIN workspaces w ON w.id=j.workspace_id
+  JOIN recruitment_application_settings s ON s.workspace_id=w.id
+  WHERE w.slug=? AND w.suspensionStatus='active' AND j.id=?
+    AND j.status='published' AND s.accept_applications=1`
+assert.equal(db.prepare(eligibleSql).all('workspace-a','a-live').length,1)
+db.prepare("UPDATE workspaces SET suspensionStatus='suspended' WHERE id='workspace-a'").run()
+assert.equal(db.prepare(eligibleSql).all('workspace-a','a-live').length,0)
+db.prepare("UPDATE workspaces SET suspensionStatus='active' WHERE id='workspace-a'").run()
+db.prepare('DELETE FROM recruitment_application_settings WHERE workspace_id=?').run('workspace-a')
+
 
 // An application key may be used only once per tenant, even across jobs.
 db.prepare('UPDATE recruitment_applications SET submission_key=? WHERE id=?')
@@ -139,4 +154,4 @@ assert.equal(db.prepare('SELECT COUNT(*) as n FROM recruitment_jobs WHERE worksp
 assert.equal(db.prepare('SELECT COUNT(*) as n FROM recruitment_candidates WHERE workspace_id=?').get('workspace-a').n,0)
 assert.equal(db.prepare('SELECT COUNT(*) as n FROM recruitment_applications WHERE workspace_id=?').get('workspace-a').n,0)
 db.close()
-console.log('PASS: ATS migrations, tenant isolation, idempotency, identity uniqueness, stage audit, rate limit, aggregate counts, cascade deletion')
+console.log('PASS: ATS migrations, tenant isolation, idempotency, identity uniqueness, stage audit, suspension gate, rate limit, aggregate counts, cascade deletion')
