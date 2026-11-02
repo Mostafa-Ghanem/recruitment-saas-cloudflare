@@ -57,6 +57,7 @@ export async function loadRecruitmentHandler(input: {
   workspaceSlug: string
 }): Promise<RecruitmentOverview> {
   const { workspaceId, role, db } = await authorizedWorkspace(input.workspaceSlug)
+  const staleBefore = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString()
   const [jobResult, applicationResult, countResult, settingsResult] = await db.batch([
     db.prepare(`SELECT id,title,department,location,employment_type,description,status,created_at,updated_at
       FROM recruitment_jobs WHERE workspace_id=? ORDER BY created_at DESC,id DESC LIMIT 150`).bind(workspaceId),
@@ -70,8 +71,10 @@ export async function loadRecruitmentHandler(input: {
       (SELECT COUNT(*) FROM recruitment_jobs WHERE workspace_id=?) AS jobs_count,
       (SELECT COUNT(*) FROM recruitment_jobs WHERE workspace_id=? AND status='published') AS published_count,
       (SELECT COUNT(*) FROM recruitment_applications WHERE workspace_id=?) AS applications_count,
-      (SELECT COUNT(*) FROM recruitment_applications WHERE workspace_id=? AND stage='interview') AS interviewing_count
-    `).bind(workspaceId, workspaceId, workspaceId, workspaceId),
+      (SELECT COUNT(*) FROM recruitment_applications WHERE workspace_id=? AND stage='interview') AS interviewing_count,
+      (SELECT COUNT(*) FROM recruitment_applications WHERE workspace_id=? AND stage='new') AS new_count,
+      (SELECT COUNT(*) FROM recruitment_applications WHERE workspace_id=? AND stage='new' AND created_at < ?) AS stale_count
+    `).bind(workspaceId, workspaceId, workspaceId, workspaceId, workspaceId, workspaceId, staleBefore),
     db.prepare(`SELECT accept_applications,privacy_policy_url
       FROM recruitment_application_settings WHERE workspace_id=?`).bind(workspaceId)
   ])
@@ -89,7 +92,9 @@ export async function loadRecruitmentHandler(input: {
       jobs: Number((countResult.results[0] as Record<string, unknown>)?.jobs_count ?? 0),
       published: Number((countResult.results[0] as Record<string, unknown>)?.published_count ?? 0),
       applications: Number((countResult.results[0] as Record<string, unknown>)?.applications_count ?? 0),
-      interviewing: Number((countResult.results[0] as Record<string, unknown>)?.interviewing_count ?? 0)
+      interviewing: Number((countResult.results[0] as Record<string, unknown>)?.interviewing_count ?? 0),
+      newApplications: Number((countResult.results[0] as Record<string, unknown>)?.new_count ?? 0),
+      staleApplications: Number((countResult.results[0] as Record<string, unknown>)?.stale_count ?? 0)
     }
   }
 }
