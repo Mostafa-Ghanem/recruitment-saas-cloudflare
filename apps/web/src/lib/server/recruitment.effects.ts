@@ -156,6 +156,14 @@ export async function updateRecruitmentJobStatusHandler(input: {
   if (!STATUSES.has(input.status)) {
     throw new Error('Validation: unsupported job status')
   }
+  if (input.status === 'published') {
+    const details = await db.prepare('SELECT description,location FROM recruitment_jobs WHERE workspace_id=? AND id=?')
+      .bind(workspaceId,input.jobId).first<{ description: string; location: string }>()
+    if (!details) throw new Error('Job not found in this workspace')
+    if (details.description.trim().length < 80 || !details.location.trim()) {
+      throw new Error('PUBLISH_DETAILS_REQUIRED')
+    }
+  }
   const update = await db.prepare(`UPDATE recruitment_jobs SET status=?,updated_at=?
     WHERE workspace_id=? AND id=?`)
     .bind(input.status, new Date().toISOString(), workspaceId, input.jobId).run()
