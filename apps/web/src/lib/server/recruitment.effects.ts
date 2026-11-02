@@ -154,18 +154,38 @@ export async function addRecruitmentCandidateHandler(input: {
   fullName: string
   email: string
   phone: string
-}): Promise<void> {
+}): Promise<{ alreadyExists: boolean }> {
   const { workspaceId, db } = await authorizedWorkspace(input.workspaceSlug)
   const fullName = clean(input.fullName, 150)
   const email = clean(input.email, 250).toLowerCase()
-  const phone = clean(input.phone, 40)
-  if (fullName.length < 2 || (!email && !phone) || (email !== '' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))) {
+  const phone = clean(input.phone, 40).replace(/[\s().-]/g, '')
+  if (fullName.length < 2 || (!email && !phone) || (phone !== '' && !/^\+?\d{7,15}$/.test(phone)) || (email !== '' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))) {
     throw new Error('Validation: name and valid contact details are required')
   }
   const job = await db.prepare('SELECT id FROM recruitment_jobs WHERE id=? AND workspace_id=?')
     .bind(input.jobId, workspaceId).first()
   if (!job) {
     throw new Error('Validation: the selected job is unavailable')
+  }
+  // Reuse a candidate within the same workspace when their email matches,
+  // or when both normalized phone and name match. A shared family phone
+  // alone must never merge two different people.
+  const existingCandidate = await db.prepare(`SELECT id FROM recruitment_candidates
+    WHERE workspace_id=? AND
+    ((? <> '' AND email=?) OR (? <> '' AND phone=? AND full_name=?))
+    LIMIT 1`)
+    .bind(workspaceId, email, email, phone, phone, fullName)
+    .first<{ id: string }>()
+  if (existingCandidate) {
+    const previous = await db.prepare(`SELECT id FROM recruitment_applications
+      WHERE workspace_id=? AND job_id=? AND candidate_id=? LIMIT 1`)
+      .bind(workspaceId, input.jobId, existingCandidate.id).first()
+    if (previous) return { alreadyExists: true }
+    await db.prepare(`INSERT INTO recruitment_applications
+      (id,workspace_id,job_id,candidate_id,stage,created_at,updated_at)
+      VALUES (?,?,?,?,'new',?,?)`)
+      .bind(crypto.randomUUID(), workspaceId, input.jobId, existingCandidate.id, new Date().toISOString(), new Date().toISOString()).run()
+    return { alreadyExists: false }
   }
   const candidateId = crypto.randomUUID()
   const now = new Date().toISOString()
@@ -177,6 +197,7 @@ export async function addRecruitmentCandidateHandler(input: {
       VALUES (?,?,?,?,'new',?,?)`)
       .bind(crypto.randomUUID(),workspaceId,input.jobId,candidateId,now,now)
   ])
+  return { alreadyExists: false }
 }
 
 export async function moveRecruitmentApplicationHandler(input: {
