@@ -15,6 +15,7 @@ export type PublicCareersData = {
   company: string
   slug: string
   jobs: PublicRecruitmentJob[]
+  applicationConfig: { enabled: boolean; siteKey: string; privacyPolicyUrl: string }
 }
 
 const CareersInput = Schema.Struct({ workspaceSlug: Schema.NonEmptyString })
