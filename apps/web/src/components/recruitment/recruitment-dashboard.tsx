@@ -11,6 +11,7 @@ import {
   editRecruitmentJobServerFn,
   moveRecruitmentApplicationServerFn,
   updateRecruitmentJobStatusServerFn,
+  saveRecruitmentApplicationSettingsServerFn,
   type RecruitmentOverview
 } from '@/lib/server/recruitment'
 import { WorkspaceShell } from '@/components/workspace-shell'
@@ -50,6 +51,10 @@ const words = {
     new: 'جديد', screening: 'مراجعة', shortlisted: 'القائمة المختصرة',
     interview: 'مقابلة', offer: 'عرض', hired: 'تم التوظيف',
     rejected: 'مرفوض', withdrawn: 'انسحب', candidatesTotal: 'طلبات التوظيف',
+    privacyTitle: 'إعدادات استقبال التقديمات', privacyBody: 'لن يظهر نموذج التقديم حتى تضيف سياسة الخصوصية وتفعّل الاستقبال وتكتمل حماية الموقع.',
+    privacyUrlLabel: 'رابط سياسة الخصوصية للشركة (HTTPS)', privacyEnable: 'السماح باستقبال طلبات التوظيف',
+    privacyConfigured: 'حماية التقديم مهيّأة على السيرفر', privacyNotConfigured: 'حماية التقديم لم تُفعّل بعد على السيرفر — سيظل النموذج مغلقًا.',
+    privacySave: 'حفظ إعدادات التقديم', previewOnly: 'الحماية والتفعيل إلزاميان قبل استقبال بيانات حقيقية.',
     switchLanguage: 'English'
   },
   en: {
@@ -76,6 +81,10 @@ const words = {
     new: 'New', screening: 'Screening', shortlisted: 'Shortlisted',
     interview: 'Interview', offer: 'Offer', hired: 'Hired',
     rejected: 'Rejected', withdrawn: 'Withdrawn', candidatesTotal: 'Applications',
+    privacyTitle: 'Application settings', privacyBody: 'Public application forms stay hidden until your privacy policy, company opt-in and security keys are configured.',
+    privacyUrlLabel: 'Company privacy policy URL (HTTPS)', privacyEnable: 'Accept applications',
+    privacyConfigured: 'Server security keys are configured', privacyNotConfigured: 'Public intake is not configured on the server. Applications will remain disabled.',
+    privacySave: 'Save application settings', previewOnly: 'Security and opt-in are mandatory before receiving real candidate details.',
     switchLanguage: 'العربية'
   }
 } as const
@@ -103,6 +112,8 @@ export function RecruitmentDashboard({
   const [editingJobId, setEditingJobId] = useState<string | null>(null)
   const [candidate, setCandidate] = useState<FormCandidate>(initialCandidate)
   const [busy, setBusy] = useState(false)
+  const [privacyUrl, setPrivacyUrl] = useState(data.settings.privacyPolicyUrl)
+  const [acceptApplications, setAcceptApplications] = useState(data.settings.acceptApplications)
   const [notice, setNotice] = useState('')
   const [error, setError] = useState('')
 
@@ -300,6 +311,38 @@ export function RecruitmentDashboard({
             </div>
           )}
         </div>
+        <section className="rounded-2xl border border-border bg-card p-5 sm:p-6" aria-labelledby="apply-settings-title">
+          <h2 id="apply-settings-title" className="text-lg font-semibold">{t.privacyTitle}</h2>
+          <p className="mt-2 text-sm text-muted-foreground">{t.privacyBody}</p>
+          <form className="mt-5 space-y-4" onSubmit={e => {
+            e.preventDefault()
+            void act(() => saveRecruitmentApplicationSettingsServerFn({
+              data: { workspaceSlug, privacyPolicyUrl: privacyUrl, acceptApplications }
+            }))
+          }}>
+            <label className="block">
+              <span className={fieldLabel}>{t.privacyUrlLabel}</span>
+              <input className={field} type="url" required={acceptApplications}
+                pattern="https://.*" autoComplete="url" maxLength={1000}
+                placeholder="https://company.example/privacy"
+                value={privacyUrl} onChange={e => setPrivacyUrl(e.target.value)} />
+            </label>
+            <label className="flex items-start gap-3 text-sm">
+              <input type="checkbox" className="mt-1 size-4 accent-primary"
+                checked={acceptApplications}
+                onChange={e => setAcceptApplications(e.target.checked)} />
+              <span>{t.privacyEnable}</span>
+            </label>
+            <p role="status" className="text-xs text-muted-foreground">
+              {data.settings.runtimeConfigured ? t.privacyConfigured : t.privacyNotConfigured}
+            </p>
+            <button type="submit" className={primary}
+              disabled={busy || (acceptApplications && !privacyUrl.startsWith('https://'))}>
+              {t.privacySave}
+            </button>
+          </form>
+          <p className="mt-4 text-xs text-muted-foreground">{t.previewOnly}</p>
+        </section>
         <p className="text-center text-xs text-muted-foreground">{t.warning}</p>
       </section>
 
