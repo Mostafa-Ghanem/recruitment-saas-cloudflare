@@ -1,0 +1,27 @@
+import { env } from 'cloudflare:workers'
+import type { PublicCareersData, PublicRecruitmentJob } from './public-careers'
+
+/**
+ * Anonymous read: only public workspace name and published job fields,
+ * never an HR user, candidate, application, or other tenant-private data.
+ * Draft and closed roles are never disclosed.
+ */
+export async function loadPublicCareersHandler(input: {
+  workspaceSlug: string
+}): Promise<PublicCareersData> {
+  const slug = input.workspaceSlug.trim()
+  if (!slug || slug.length > 120 || !env.DB) {
+    return { company: '', slug, jobs: [] }
+  }
+  const workspace = await env.DB.prepare('SELECT id,name FROM workspaces WHERE slug=? LIMIT 1')
+    .bind(slug).first<{ id: string; name: string }>()
+  if (!workspace) {
+    return { company: '', slug, jobs: [] }
+  }
+  const result = await env.DB.prepare(`SELECT id,title,department,location,employment_type,description,created_at
+    FROM recruitment_jobs
+    WHERE workspace_id=? AND status='published'
+    ORDER BY created_at DESC,id DESC LIMIT 60`)
+    .bind(workspace.id).all<PublicRecruitmentJob>()
+  return { company: workspace.name, slug, jobs: result.results }
+}
