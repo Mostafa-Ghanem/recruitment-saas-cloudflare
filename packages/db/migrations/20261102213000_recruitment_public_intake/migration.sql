@@ -41,3 +41,11 @@ CREATE TABLE recruitment_stage_history (
 );
 CREATE INDEX recruitment_stage_history_workspace_application_idx
   ON recruitment_stage_history(workspace_id, application_id, created_at);
+
+-- A short-lived per-IP pseudonymous throttle. Periodic cleanup must delete expired rows.
+CREATE TABLE recruitment_apply_rate_limits (
+  key TEXT PRIMARY KEY NOT NULL,
+  hits INTEGER NOT NULL DEFAULT 0,
+  expires_at INTEGER NOT NULL
+);
+CREATE INDEX recruitment_apply_rate_limits_expiry_idx ON recruitment_apply_rate_limits(expires_at);
