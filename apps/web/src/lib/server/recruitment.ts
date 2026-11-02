@@ -12,6 +12,7 @@ export type RecruitmentJob = {
   location: string
   employment_type: string
   description: string
+  application_count: number
   status: 'draft' | 'published' | 'closed'
   created_at: string
   updated_at: string
