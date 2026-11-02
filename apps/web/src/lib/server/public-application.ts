@@ -19,6 +19,8 @@ const SubmitApplicationInput = Schema.Struct({
   utmContent: Schema.String
 })
 
+export type PublicApplyInput = typeof SubmitApplicationInput.Type
+
 export type PublicApplyResult = {
   outcome: 'submitted' | 'already_submitted'
   reference: string
