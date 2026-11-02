@@ -12,6 +12,8 @@ import {
   moveRecruitmentApplicationServerFn,
   updateRecruitmentJobStatusServerFn,
   saveRecruitmentApplicationSettingsServerFn,
+  loadRecruitmentApplicationHistoryServerFn,
+  type RecruitmentStageEvent,
   type RecruitmentOverview
 } from '@/lib/server/recruitment'
 import { WorkspaceShell } from '@/components/workspace-shell'
@@ -114,6 +116,9 @@ export function RecruitmentDashboard({
   const [busy, setBusy] = useState(false)
   const [privacyUrl, setPrivacyUrl] = useState(data.settings.privacyPolicyUrl)
   const [acceptApplications, setAcceptApplications] = useState(data.settings.acceptApplications)
+  const [openHistoryId, setOpenHistoryId] = useState<string | null>(null)
+  const [historyLoadingId, setHistoryLoadingId] = useState<string | null>(null)
+  const [historyItems, setHistoryItems] = useState<Record<string, RecruitmentStageEvent[] | undefined>>({})
   const [notice, setNotice] = useState('')
   const [error, setError] = useState('')
 
@@ -132,6 +137,7 @@ export function RecruitmentDashboard({
     try {
       const result = await action()
       await router.invalidate()
+      setHistoryItems({})
       setNotice(result && typeof result === 'object' && 'alreadyExists' in result &&
         result.alreadyExists === true ? t.alreadyExists : t.saved)
       if (close) {
@@ -145,6 +151,21 @@ export function RecruitmentDashboard({
     } finally {
       setBusy(false)
     }
+  }
+
+  async function toggleHistory(applicationId: string) {
+    if (openHistoryId === applicationId) { setOpenHistoryId(null); return }
+    setOpenHistoryId(applicationId)
+    if (historyItems[applicationId] !== undefined) return
+    setHistoryLoadingId(applicationId)
+    try {
+      const events = await loadRecruitmentApplicationHistoryServerFn({
+        data: { workspaceSlug, applicationId }
+      })
+      setHistoryItems(previous => ({ ...previous, [applicationId]: events }))
+    } catch {
+      setError(lang === 'ar' ? 'تعذر عرض سجل المرشح.' : 'Could not load candidate history.')
+    } finally { setHistoryLoadingId(null) }
   }
 
   function openDialog(type: Exclude<Dialog, null>) {
@@ -303,6 +324,32 @@ export function RecruitmentDashboard({
                           className={field + ' min-w-44 flex-1 sm:flex-none'} onChange={e => void act(() => moveRecruitmentApplicationServerFn({data: {workspaceSlug, applicationId: app.id, stage: e.target.value}}))}>
                           {stages.map(stage => <option value={stage} key={stage}>{t[stage]}</option>)}
                         </select>
+                      </div>
+                      <div className="w-full border-t border-border/60 pt-3">
+                        <button type="button" className="text-xs font-medium text-primary underline-offset-4 hover:underline"
+                          aria-expanded={openHistoryId === app.id}
+                          onClick={() => { void toggleHistory(app.id) }}>
+                          {lang === 'ar' ? 'عرض سجل المراحل' : 'View stage history'}
+                        </button>
+                        {openHistoryId === app.id && (
+                          <div className="mt-3 space-y-2 rounded-xl bg-muted/50 p-3 text-xs" role="region"
+                            aria-label={lang === 'ar' ? 'سجل مراحل المرشح' : 'Candidate stage history'}>
+                            {historyLoadingId === app.id ? (lang === 'ar' ? 'جاري التحميل...' : 'Loading...') :
+                              (historyItems[app.id]?.length ? historyItems[app.id]?.map(event => (
+                                <div key={event.id} className="flex flex-wrap items-center justify-between gap-2 border-b border-border/50 py-2 last:border-0">
+                                  <span className="font-medium">
+                                    {stages.includes(event.to_stage as typeof stages[number])
+                                      ? t[event.to_stage as typeof stages[number]] : event.to_stage}
+                                  </span>
+                                  <span className="text-muted-foreground">
+                                    {event.changed_by_team ? (lang === 'ar' ? 'فريق التوظيف' : 'Recruitment team') :
+                                      (lang === 'ar' ? 'نظام التقديم' : 'Application system')}
+                                    {' · '}{new Intl.DateTimeFormat(lang === 'ar' ? 'ar-SA' : 'en', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(event.created_at))}
+                                  </span>
+                                </div>
+                              )) : (lang === 'ar' ? 'لا يوجد سجل سابق.' : 'No events recorded.'))}
+                          </div>
+                        )}
                       </div>
                     </article>
                   ))}
