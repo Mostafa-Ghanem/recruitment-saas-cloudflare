@@ -284,3 +284,21 @@ export async function saveRecruitmentApplicationSettingsHandler(input: {
       updated_at=excluded.updated_at`)
     .bind(workspaceId, input.acceptApplications ? 1 : 0, urlString, new Date().toISOString()).run()
 }
+
+/** Lazy, tenant-scoped timeline retrieval; no other company's history is exposed. */
+export async function loadRecruitmentApplicationHistoryHandler(input: {
+  workspaceSlug: string
+  applicationId: string
+}): Promise<import('./recruitment').RecruitmentStageEvent[]> {
+  const { workspaceId, db } = await authorizedWorkspace(input.workspaceSlug)
+  const app = await db.prepare('SELECT id FROM recruitment_applications WHERE workspace_id=? AND id=? LIMIT 1')
+    .bind(workspaceId, input.applicationId).first()
+  if (!app) throw new Error('Application not found in this workspace')
+  const result = await db.prepare(`SELECT id,from_stage,to_stage,
+      CASE WHEN actor_user_id IS NULL THEN 0 ELSE 1 END AS changed_by_team,created_at
+    FROM recruitment_stage_history
+    WHERE workspace_id=? AND application_id=?
+    ORDER BY created_at DESC,id DESC LIMIT 100`)
+    .bind(workspaceId,input.applicationId).all<import('./recruitment').RecruitmentStageEvent>()
+  return result.results
+}
