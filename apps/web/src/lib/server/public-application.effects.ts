@@ -99,7 +99,7 @@ export async function submitPublicApplicationHandler(input: PublicApplyInput): P
   const job = await db.prepare(`SELECT j.id,j.workspace_id,s.privacy_policy_url
     FROM recruitment_jobs j JOIN workspaces w ON w.id=j.workspace_id
     JOIN recruitment_application_settings s ON s.workspace_id=w.id
-    WHERE w.slug=? AND j.id=? AND j.status='published'
+    WHERE w.slug=? AND w.suspensionStatus='active' AND j.id=? AND j.status='published'
       AND s.accept_applications=1 AND s.privacy_policy_url <> ''
     LIMIT 1`).bind(workspaceSlug, jobId).first<{ id: string; workspace_id: string; privacy_policy_url: string }>()
   if (!job || !validPrivacyUrl(job.privacy_policy_url)) {
