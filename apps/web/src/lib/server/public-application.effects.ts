@@ -96,13 +96,15 @@ export async function submitPublicApplicationHandler(input: PublicApplyInput): P
     throw new Error('Please enter your name and a valid phone number or email')
   }
   const db = env.DB
-  const job = await db.prepare(`SELECT j.id,j.workspace_id
+  const job = await db.prepare(`SELECT j.id,j.workspace_id,s.privacy_policy_url
     FROM recruitment_jobs j JOIN workspaces w ON w.id=j.workspace_id
     JOIN recruitment_application_settings s ON s.workspace_id=w.id
     WHERE w.slug=? AND j.id=? AND j.status='published'
       AND s.accept_applications=1 AND s.privacy_policy_url <> ''
-    LIMIT 1`).bind(workspaceSlug, jobId).first<{ id: string; workspace_id: string }>()
-  if (!job) throw new Error('Applications for this job are unavailable')
+    LIMIT 1`).bind(workspaceSlug, jobId).first<{ id: string; workspace_id: string; privacy_policy_url: string }>()
+  if (!job || !validPrivacyUrl(job.privacy_policy_url)) {
+    throw new Error('Applications for this job are unavailable')
+  }
 
   // Network retries are safe: one high-entropy key is only ever accepted for
   // one job in one workspace, and no candidate attributes are returned.
