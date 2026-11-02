@@ -34,7 +34,7 @@ export type RecruitmentOverview = {
   applications: RecruitmentApplication[]
   settings: { acceptApplications: boolean; privacyPolicyUrl: string; runtimeConfigured: boolean }
   viewer: { role: string }
-  counts: { jobs: number; published: number; applications: number; interviewing: number }
+  counts: { jobs: number; published: number; applications: number; interviewing: number; newApplications: number; staleApplications: number }
 }
 
 const WorkspaceInput = Schema.Struct({ workspaceSlug: Schema.NonEmptyString })
