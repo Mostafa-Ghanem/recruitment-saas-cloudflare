@@ -8,6 +8,7 @@ import {
 import {
   addRecruitmentCandidateServerFn,
   createRecruitmentJobServerFn,
+  editRecruitmentJobServerFn,
   moveRecruitmentApplicationServerFn,
   updateRecruitmentJobStatusServerFn,
   type RecruitmentOverview
@@ -28,7 +29,7 @@ const words = {
   ar: {
     eyebrow: 'مساحة العمل / إدارة المواهب', title: 'التوظيف ببساطة',
     intro: 'كل وظيفة وكل مرشح في مكان واحد، بدون خطوات معقدة.',
-    newJob: 'وظيفة جديدة', addCandidate: 'إضافة مرشح', jobs: 'الوظائف',
+    newJob: 'وظيفة جديدة', editJob: 'تعديل الوظيفة', saveChanges: 'حفظ التعديلات', viewPublic: 'عرض الصفحة العامة', addCandidate: 'إضافة مرشح', jobs: 'الوظائف',
     applicants: 'المرشحون', published: 'وظائف منشورة', inInterview: 'في المقابلة',
     search: 'ابحث عن وظيفة أو مرشح...', all: 'الكل', live: 'منشورة',
     draft: 'مسودات', closed: 'مغلقة', publish: 'نشر الوظيفة',
@@ -54,7 +55,7 @@ const words = {
   en: {
     eyebrow: 'Workspace / Talent', title: 'Hiring made simple',
     intro: 'All your jobs and applicants in one clear place.',
-    newJob: 'New job', addCandidate: 'Add candidate', jobs: 'Jobs',
+    newJob: 'New job', editJob: 'Edit job', saveChanges: 'Save changes', viewPublic: 'View public page', addCandidate: 'Add candidate', jobs: 'Jobs',
     applicants: 'Candidates', published: 'Published jobs', inInterview: 'In interviews',
     search: 'Search jobs or candidates...', all: 'All', live: 'Published',
     draft: 'Drafts', closed: 'Closed', publish: 'Publish job',
@@ -99,6 +100,7 @@ export function RecruitmentDashboard({
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState('all')
   const [job, setJob] = useState<FormJob>(initialJob)
+  const [editingJobId, setEditingJobId] = useState<string | null>(null)
   const [candidate, setCandidate] = useState<FormCandidate>(initialCandidate)
   const [busy, setBusy] = useState(false)
   const [notice, setNotice] = useState('')
@@ -123,6 +125,7 @@ export function RecruitmentDashboard({
       if (close) {
         setDialog(null)
         setJob(initialJob)
+        setEditingJobId(null)
         setCandidate(initialCandidate)
       }
     } catch {
@@ -134,10 +137,19 @@ export function RecruitmentDashboard({
 
   function openDialog(type: Exclude<Dialog, null>) {
     setError('')
+    if (type === 'job') { setEditingJobId(null); setJob(initialJob) }
     if (type === 'candidate') {
       setCandidate({ ...initialCandidate, jobId: data.jobs[0]?.id ?? '' })
     }
     setDialog(type)
+  }
+
+  function editJob(item: RecruitmentOverview['jobs'][number]) {
+    setJob({ title: item.title, department: item.department, location: item.location,
+      employmentType: item.employment_type, description: item.description })
+    setEditingJobId(item.id)
+    setError('')
+    setDialog('job')
   }
 
   const summary = [
@@ -234,6 +246,11 @@ export function RecruitmentDashboard({
                       <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-3">
                         <span className="text-xs text-muted-foreground">{data.applications.filter(a => a.job_id === item.id).length} {t.apply}</span>
                         <div className="flex flex-wrap gap-2">
+                          <button type="button" disabled={busy} className={pill + ' min-h-9 px-3 text-xs'}
+                            onClick={() => editJob(item)}>{t.editJob}</button>
+                          {item.status === 'published' && <a target="_blank" rel="noopener noreferrer"
+                            href={`/careers/${encodeURIComponent(workspaceSlug)}#job-${encodeURIComponent(item.id)}`}
+                            className={pill + ' min-h-9 px-3 text-xs'}>{t.viewPublic} <ArrowUpRightIcon className="size-3.5"/></a>}
                           {item.status !== 'closed' && (
                             <button type="button" disabled={busy} className={pill + ' min-h-9 px-3 text-xs'}
                               onClick={() => void act(() => updateRecruitmentJobStatusServerFn({ data: { workspaceSlug, jobId: item.id, status: item.status === 'published' ? 'draft' : 'published' } }))}>
@@ -290,14 +307,14 @@ export function RecruitmentDashboard({
           <div role="dialog" aria-modal="true" aria-labelledby="ats-dialog-title" dir={lang === 'ar' ? 'rtl' : 'ltr'} lang={lang === 'ar' ? 'ar-SA' : 'en'} className="my-auto w-full max-w-xl rounded-2xl border border-border bg-card p-5 text-foreground shadow-2xl sm:p-7">
             <div className="mb-5 flex items-center justify-between">
               <div>
-                <h2 id="ats-dialog-title" className="text-xl font-semibold">{dialog === 'job' ? t.quickJob : t.quickCandidate}</h2>
+                <h2 id="ats-dialog-title" className="text-xl font-semibold">{dialog === 'job' ? (editingJobId ? t.editJob : t.quickJob) : t.quickCandidate}</h2>
                 <p className="mt-1 text-xs text-muted-foreground">{dialog === 'job' ? t.jobHint : t.candidateHint}</p>
               </div>
               <button type="button" aria-label="Close" className="rounded-lg p-2 hover:bg-muted" disabled={busy} onClick={() => setDialog(null)}><XIcon className="size-5"/></button>
             </div>
             {error && <p role="alert" className="mb-4 rounded-lg border border-destructive/40 p-3 text-sm text-destructive">{error}</p>}
             {dialog === 'job' ? (
-              <form className="space-y-4" onSubmit={e => { e.preventDefault(); void act(() => createRecruitmentJobServerFn({data: {workspaceSlug, ...job}}), true) }}>
+              <form className="space-y-4" onSubmit={e => { e.preventDefault(); void act(() => editingJobId ? editRecruitmentJobServerFn({data: {workspaceSlug, jobId: editingJobId, ...job}}) : createRecruitmentJobServerFn({data: {workspaceSlug, ...job}}), true) }}>
                 <label className="block"><span className={fieldLabel}>{t.jobTitle} *</span><input autoFocus required minLength={3} maxLength={150} className={field} value={job.title} onChange={e => setJob({...job, title: e.target.value})} placeholder={lang==='ar'?'مثال: أخصائي مبيعات عقارية':'e.g. Real Estate Sales Specialist'}/></label>
                 <div className="grid gap-4 sm:grid-cols-2">
                   <label className="block"><span className={fieldLabel}>{t.department}</span><input maxLength={100} className={field} value={job.department} onChange={e=>setJob({...job,department:e.target.value})}/></label>
@@ -305,7 +322,7 @@ export function RecruitmentDashboard({
                 </div>
                 <label className="block"><span className={fieldLabel}>{t.employment}</span><select className={field} value={job.employmentType} onChange={e=>setJob({...job,employmentType:e.target.value})}><option value="full_time">{t.fullTime}</option><option value="part_time">{t.partTime}</option><option value="contract">{t.contract}</option><option value="internship">{t.internship}</option></select></label>
                 <label className="block"><span className={fieldLabel}>{t.description}</span><textarea maxLength={10000} rows={4} className={field + ' resize-y py-3'} value={job.description} onChange={e=>setJob({...job,description:e.target.value})}/></label>
-                <div className="flex justify-end gap-2 pt-3"><button type="button" className={pill} disabled={busy} onClick={()=>setDialog(null)}>{t.cancel}</button><button type="submit" className={primary} disabled={busy || !job.title.trim()}>{t.saveJob} <ArrowUpRightIcon className="size-4"/></button></div>
+                <div className="flex justify-end gap-2 pt-3"><button type="button" className={pill} disabled={busy} onClick={()=>setDialog(null)}>{t.cancel}</button><button type="submit" className={primary} disabled={busy || !job.title.trim()}>{editingJobId ? t.saveChanges : t.saveJob} <ArrowUpRightIcon className="size-4"/></button></div>
               </form>
             ) : (
               <form className="space-y-4" onSubmit={e => { e.preventDefault(); void act(() => addRecruitmentCandidateServerFn({data:{workspaceSlug,...candidate}}),true) }}>
