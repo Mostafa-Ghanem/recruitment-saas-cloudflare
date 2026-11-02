@@ -1405,6 +1405,7 @@ export const recruitmentApplications = sqliteTable(
       columns: [table.workspaceId, table.candidateId],
       foreignColumns: [recruitmentCandidates.workspaceId, recruitmentCandidates.id]
     }).onDelete('cascade'),
+    uniqueIndex('recruitment_applications_workspace_job_candidate_uidx').on(table.workspaceId, table.jobId, table.candidateId),
     index('recruitment_applications_workspace_stage_idx').on(table.workspaceId, table.stage),
     index('recruitment_applications_workspace_created_idx').on(table.workspaceId, table.createdAt),
     index('recruitment_applications_workspace_job_idx').on(table.workspaceId, table.jobId),
