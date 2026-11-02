@@ -102,7 +102,7 @@ export const updateRecruitmentJobStatusServerFn = createServerFn({ method: 'POST
 
 export const addRecruitmentCandidateServerFn = createServerFn({ method: 'POST' })
   .validator(Schema.decodeUnknownSync(CreateCandidateInput))
-  .handler(async ({ data }): Promise<void> => {
+  .handler(async ({ data }): Promise<{ alreadyExists: boolean }> => {
     const { addRecruitmentCandidateHandler } = await import('./recruitment.effects')
     return addRecruitmentCandidateHandler(data)
   })
