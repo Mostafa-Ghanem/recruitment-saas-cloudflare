@@ -127,3 +127,23 @@ export const saveRecruitmentApplicationSettingsServerFn = createServerFn({ metho
     const { saveRecruitmentApplicationSettingsHandler } = await import('./recruitment.effects')
     return saveRecruitmentApplicationSettingsHandler(data)
   })
+
+export type RecruitmentStageEvent = {
+  id: string
+  from_stage: string | null
+  to_stage: string
+  changed_by_team: number
+  created_at: string
+}
+
+const ApplicationHistoryInput = Schema.Struct({
+  workspaceSlug: Schema.NonEmptyString,
+  applicationId: Schema.NonEmptyString
+})
+
+export const loadRecruitmentApplicationHistoryServerFn = createServerFn({ method: 'GET' })
+  .validator(Schema.decodeUnknownSync(ApplicationHistoryInput))
+  .handler(async ({ data }): Promise<RecruitmentStageEvent[]> => {
+    const { loadRecruitmentApplicationHistoryHandler } = await import('./recruitment.effects')
+    return loadRecruitmentApplicationHistoryHandler(data)
+  })
