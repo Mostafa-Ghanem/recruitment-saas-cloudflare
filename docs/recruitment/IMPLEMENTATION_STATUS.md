@@ -17,10 +17,18 @@ Branch: `develop/recruitment-saas`. PR #1 remains a draft. The code is **not dep
 - Online public application intake, anti-bot Turnstile, R2 resume files, malware scans.
 - Advanced recruiter/interviewer roles (MVP management is owner/admin only).
 - Candidate deduplication, edit/delete, notes and stage audit history.
-- Pagination across more than 150 jobs / 250 applications (dashboard counters currently reflect returned records only).
+- Pagination across more than 150 jobs / 250 applications (aggregate dashboard counters now use independent full COUNT(*) queries).
 - Email notifications and Odoo/webhook integration.
 - Full Arabic localization of the inherited SaaS shell (the recruitment pages themselves are bilingual/RTL).
 - Production deployment, comprehensive security review and successful full project build.
+- Application audit/stage history, full concurrency-safe candidate identity deduplication, public applicant intake and legal review.
+
+## Remediation since original audit
+- Correct aggregate counters in D1; explicit not-found errors for stale job/application writes.
+- Candidate reuse by tenant/contact and explicit already-applied UI; unique application/job/candidate index migration. Concurrent first-time identity races remain an unresolved risk.
+- Public job pages temporarily noindex until compliant apply is available.
+- Full product/UX/security roadmap: `docs/recruitment/PRODUCT_AUDIT_UX_SECURITY_ROADMAP_AR.md`.
+- Standalone UX demo Worker is published, but its changes are not saved server-side; do not handle real candidate data there.
 
 ## Run / verify
 1. Clone this branch; install upstream-required Node 26.13+, Vite+ and pnpm.
