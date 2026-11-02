@@ -1,43 +1,38 @@
-# Recruitment MVP — implementation status
+# HireFlow ATS — implementation status (2026-11-02)
 
-Branch: `develop/recruitment-saas`. PR #1 remains a draft. The code is **not deployed**.
+**Branch:** `develop/recruitment-saas` — **Draft PR #1**. Full SaaS app is **NOT** deployed or ready for production PII.
 
-## Implemented in this branch
-- Workspace-scoped recruitment tables and a D1 SQL migration.
-- Authenticated, owner/admin-only recruitment dashboard at `/workspaces/{workspaceSlug}/recruitment`.
-- One-screen Arabic-first (ar-SA)/English UX: jobs, candidates, metrics, search, draft/published/closed filters.
-- Create and edit jobs, publish/unpublish/close them.
-- Add a candidate to a job and move their application through hiring stages.
-- Public read-only career page at `/careers/{workspaceSlug}`, listing **only published jobs**.
-- Reuses Better Auth membership and privileged-authentication/suspension gates before every private D1 query.
-- Query scoping by resolved workspace ID; composite D1 foreign keys prevent cross-tenant application links.
-- Dependency-free database test: `node tools/recruitment-db-smoke.mjs`.
+## What is actually implemented in source
 
-## Intentionally NOT implemented yet
-- Online public application intake, anti-bot Turnstile, R2 resume files, malware scans.
-- Advanced recruiter/interviewer roles (MVP management is owner/admin only).
-- Candidate deduplication, edit/delete, notes and stage audit history.
-- Pagination across more than 150 jobs / 250 applications (aggregate dashboard counters now use independent full COUNT(*) queries).
-- Email notifications and Odoo/webhook integration.
-- Full Arabic localization of the inherited SaaS shell (the recruitment pages themselves are bilingual/RTL).
-- Production deployment, comprehensive security review and successful full project build.
-- Application audit/stage history, full concurrency-safe candidate identity deduplication, public applicant intake and legal review.
+- Better Auth workspace-gated recruiter overview for company owner/admin at `/workspaces/{workspaceSlug}/recruitment`.
+- D1 jobs, candidates, applications and published careers. Workspace-scoped constraints and permissions.
+- Arabic-first RTL / English recruitment views; jobs and candidate management, stage filters, actionable attention counts, server-accurate company/job statistics.
+- Publish/unpublish/close with publish validation (location and meaningful job description; drafts stay easy).
+- Internal candidate reuse/duplicate reduction, unique job/candidate database constraint and clear already-applied response.
+- **New P0:** public no-account application form at `/careers/{workspaceSlug}` when all protection conditions are satisfied:
+  - Company opt-in + HTTPS privacy policy URL.
+  - `RECRUITMENT_PUBLIC_APPLY_ENABLED=true` and Turnstile keys provided on that deployment.
+  - Server-side Turnstile verification, origin check, per-IP throttling, minimal contact fields, idempotent UUID submit key, D1 transactional candidate/application/stage-history creation, campaign UTMs.
+- Authenticated stage history timeline, changing stage records actor/time; scoped query never accepts a client tenant ID.
+- `noindex` on incomplete career/demo pages.
+- Smoke coverage: `node tools/recruitment-db-smoke.mjs` PASS with real SQLite constraints; synthetic D1 preview database migration and unique/transition checks PASS.
 
-## Remediation since original audit
-- Correct aggregate counters in D1; explicit not-found errors for stale job/application writes.
-- Candidate reuse by tenant/contact and explicit already-applied UI; unique application/job/candidate index migration. Concurrent first-time identity races remain an unresolved risk.
-- Public job pages temporarily noindex until compliant apply is available.
-- Full product/UX/security roadmap: `docs/recruitment/PRODUCT_AUDIT_UX_SECURITY_ROADMAP_AR.md`.
-- Standalone UX demo Worker is published, but its changes are not saved server-side; do not handle real candidate data there.
+**Important:** public intake is **fail-closed by default** and is **not active** in the existing demo, which remains a browser-only UX simulation with synthetic data. Candidate PII must NOT be entered in that demo.
 
-## Run / verify
-1. Clone this branch; install upstream-required Node 26.13+, Vite+ and pnpm.
-2. `vp install`; `pnpm run check` / `pnpm run build`.
-3. `node tools/recruitment-db-smoke.mjs`.
-4. Migrate isolated staging D1 using existing project script, **never an existing customer database without a backup**.
-5. Use a staging Workspace with an owner account to test the dashboard.
-6. Check desktop/mobile, Arabic RTL and English LTR and tenant boundary tests.
-7. Deploy only after CI/build, real authentication and backups pass.
+## Remaining required before a real pilot
 
-## External environment limitations observed
-A separate sandbox clone ran a TypeScript syntax-only scan (no parse errors), and the SQL was validated with SQLite and FK enforcement. The full dependency install was killed (exit 137) in the resource-constrained sandbox while downloading the starter's dependencies. This does NOT prove the full project build passes. No Cloudflare deployment was made.
+1. Full `pnpm run check`, `pnpm run build`, and E2E on the upstream Node `^26.13.0` toolchain, using CI runner with adequate memory. Not yet achieved (prior sandbox install killed exit 137; remote syntax-only scan is not a full build).
+2. Deploy isolated authenticated SaaS Staging (not the standalone UX Worker), configure Auth/D1/Turnstile and execute real end-to-end test with synthetic users.
+3. Private R2 CV upload, validation, malware scanning, private retrieval and deletion — currently **not implemented**.
+4. Scoped Recruiter/Interviewer roles, scheduling, feedback, error and keyboard/mobile E2E, and server-side pagination.
+5. PDPL privacy/retention/deletion/subject-rights, data-processing and cross-border assessment, backup restore test, monitoring, incident response and rate-limit table expiration cleanup.
+6. Source/UTM reporting and integrations, self-onboarding, subscriptions and customer support for commercial V1.
+
+## References
+- [Full product, friction, security and release audit](PRODUCT_AUDIT_UX_SECURITY_ROADMAP_AR.md)
+- [P0 actual delivery and test evidence](P0_IMPLEMENTATION_REPORT_AR.md)
+- [Standalone Workers UX demo](../../preview/README.md)
+
+## CI & release instructions
+
+Do not merge or enable real public intake until release blockers pass. Treat this branch as a draft feature branch, keep the existing app and personal Cloudflare resources untouched, and only use synthetic data in staging.
