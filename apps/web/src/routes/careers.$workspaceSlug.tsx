@@ -9,7 +9,8 @@ export const Route = createFileRoute('/careers/$workspaceSlug')({
   head: ({ loaderData }) => ({
     meta: [
       { title: loaderData?.company ? `${loaderData.company} | Careers` : 'Careers' },
-      { name: 'description', content: 'Open positions and career opportunities.' }
+      { name: 'description', content: 'Open positions and career opportunities.' },
+      { name: 'robots', content: 'noindex,nofollow' }
     ]
   })
 })
