@@ -82,23 +82,30 @@ export async function loadRecruitmentHandler(input: {
     db.prepare(`SELECT accept_applications,privacy_policy_url
       FROM recruitment_application_settings WHERE workspace_id=?`).bind(workspaceId)
   ])
+  if (!jobResult || !applicationResult || !countResult || !settingsResult) {
+    throw new Error('Recruitment data could not be loaded')
+  }
+  const settingsRow = settingsResult.results[0] as
+    | { accept_applications?: number; privacy_policy_url?: string }
+    | undefined
+  const countRow = countResult.results[0] as Record<string, unknown> | undefined
   const jobs = jobResult.results as RecruitmentJob[]
   const applications = applicationResult.results as RecruitmentApplication[]
   return {
     jobs, applications, viewer: { role },
     settings: {
-      acceptApplications: settingsResult.results[0]?.accept_applications === 1,
-      privacyPolicyUrl: String(settingsResult.results[0]?.privacy_policy_url ?? ''),
+      acceptApplications: settingsRow?.accept_applications === 1,
+      privacyPolicyUrl: String(settingsRow?.privacy_policy_url ?? ''),
       runtimeConfigured: env.RECRUITMENT_PUBLIC_APPLY_ENABLED === 'true' &&
         Boolean(env.TURNSTILE_SITE_KEY && env.TURNSTILE_SECRET_KEY)
     },
     counts: {
-      jobs: Number((countResult.results[0] as Record<string, unknown>)?.jobs_count ?? 0),
-      published: Number((countResult.results[0] as Record<string, unknown>)?.published_count ?? 0),
-      applications: Number((countResult.results[0] as Record<string, unknown>)?.applications_count ?? 0),
-      interviewing: Number((countResult.results[0] as Record<string, unknown>)?.interviewing_count ?? 0),
-      newApplications: Number((countResult.results[0] as Record<string, unknown>)?.new_count ?? 0),
-      staleApplications: Number((countResult.results[0] as Record<string, unknown>)?.stale_count ?? 0)
+      jobs: Number(countRow?.jobs_count ?? 0),
+      published: Number(countRow?.published_count ?? 0),
+      applications: Number(countRow?.applications_count ?? 0),
+      interviewing: Number(countRow?.interviewing_count ?? 0),
+      newApplications: Number(countRow?.new_count ?? 0),
+      staleApplications: Number(countRow?.stale_count ?? 0)
     }
   }
 }
@@ -271,7 +278,7 @@ export async function moveRecruitmentApplicationHandler(input: {
       .bind(crypto.randomUUID(),application.stage,input.stage,actorUserId,now,
         workspaceId,input.applicationId,input.stage)
   ])
-  if (update.meta.changes === 0) {
+  if (!update || update.meta.changes === 0) {
     throw new Error('Application was updated by another user. Refresh and try again')
   }
 }
