@@ -44,7 +44,9 @@ async function authorizedWorkspace(slug: string): Promise<{
     Effect.gen(function* () {
       yield* requireWorkspacePermission({ organization: ['update'] })
       const ctx = yield* WorkspaceContext
-      return { workspaceId: ctx.workspace.id, role: ctx.actor?.role === 'owner' ? 'owner' : ctx.actor?.role === 'admin' ? 'admin' : 'member' }
+      const rawRole = ctx.actor?.role
+      const role = rawRole === 'owner' || rawRole === 'admin' ? rawRole : 'member'
+      return { workspaceId: ctx.workspace.id, role }
     }),
     { userId: session.user.id }
   )
@@ -90,8 +92,8 @@ export async function loadRecruitmentHandler(input: {
     | { accept_applications?: number; privacy_policy_url?: string }
     | undefined
   const countRow = countResult.results[0] as Record<string, unknown> | undefined
-  const jobs = jobResult.results as RecruitmentJob[]
-  const applications = applicationResult.results as RecruitmentApplication[]
+  const jobs = jobResult.results as Array<RecruitmentJob>
+  const applications = applicationResult.results as Array<RecruitmentApplication>
   return {
     jobs, applications, viewer: { role },
     settings: {
@@ -314,7 +316,7 @@ export async function saveRecruitmentApplicationSettingsHandler(input: {
 export async function loadRecruitmentApplicationHistoryHandler(input: {
   workspaceSlug: string
   applicationId: string
-}): Promise<import('./recruitment').RecruitmentStageEvent[]> {
+}): Promise<import('./recruitment').Array<RecruitmentStageEvent>> {
   const { workspaceId, db } = await authorizedWorkspace(input.workspaceSlug)
   const app = await db.prepare('SELECT id FROM recruitment_applications WHERE workspace_id=? AND id=? LIMIT 1')
     .bind(workspaceId, input.applicationId).first()
