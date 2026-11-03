@@ -61,7 +61,7 @@ export function PublicApplicationForm({
         callback: token => { if (active) { setSecurityToken(token); setSecurityError('') } },
         'expired-callback': () => { if (active) setSecurityToken('') },
         'error-callback': () => { if (active) { setSecurityToken(''); setSecurityError(ar ? 'تعذر إكمال التحقق الأمني. حاول مجددًا.' : 'Security verification failed. Please retry.') } }
-      })
+      }) ?? null
     }
     if (!turnstileWindow().turnstile) {
       script = document.createElement('script')
@@ -69,7 +69,7 @@ export function PublicApplicationForm({
       script.async = true
       script.onload = renderWidget
       script.onerror = () => { if (active) setSecurityError(ar ? 'تعذر تحميل التحقق الأمني.' : 'Could not load the security check.') }
-      document.head.append(script)
+      document.head.appendChild(script)
     } else renderWidget()
     return () => {
       active = false
