@@ -34,7 +34,7 @@ export type RecruitmentOverview = {
   jobs: RecruitmentJob[]
   applications: RecruitmentApplication[]
   settings: { acceptApplications: boolean; privacyPolicyUrl: string; runtimeConfigured: boolean }
-  viewer: { role: string }
+  viewer: { role: 'owner' | 'admin' | 'member' }
   counts: { jobs: number; published: number; applications: number; interviewing: number; newApplications: number; staleApplications: number }
 }
 
