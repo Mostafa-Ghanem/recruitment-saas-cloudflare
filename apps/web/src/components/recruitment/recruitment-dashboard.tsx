@@ -274,7 +274,6 @@ export function RecruitmentDashboard({
   const [acceptDraft, setAcceptDraft] = useState<boolean | null>(null);
   const privacyUrl = privacyDraft ?? data.settings.privacyPolicyUrl;
   const acceptApplications = acceptDraft ?? data.settings.acceptApplications;
-  const [staleBefore] = useState(() => Date.now() - 48 * 60 * 60 * 1_000);
   const modalRef = useRef<HTMLDialogElement>(null);
   useEffect(() => {
     if (dialog && modalRef.current && !modalRef.current.open) {
@@ -303,16 +302,17 @@ export function RecruitmentDashboard({
         item.stage === candidateStage ||
         (candidateStage === "stale" &&
           item.stage === "new" &&
-          new Date(item.created_at).getTime() < staleBefore)) &&
+          item.created_at < data.staleBefore)) &&
       [item.full_name, item.phone, item.email, item.job_title]
         .join(" ")
         .toLocaleLowerCase()
         .includes(search.trim().toLocaleLowerCase()),
   );
 
-  async function act(
-    action: () => Promise<void | { id: string } | { alreadyExists: boolean }>,
+  async function act<Result>(
+    action: () => Promise<Result>,
     close = false,
+    getNotice?: (result: Result) => string,
   ) {
     setBusy(true);
     setError("");
@@ -322,9 +322,7 @@ export function RecruitmentDashboard({
       const result = await action();
       await router.invalidate();
       setHistoryItems({});
-      setNotice(
-        result && "alreadyExists" in result && result.alreadyExists ? t.alreadyExists : t.saved,
-      );
+      setNotice(getNotice ? getNotice(result) : t.saved);
       if (close) {
         setDialog(null);
         setJob(initialJob);
@@ -403,6 +401,19 @@ export function RecruitmentDashboard({
     }),
   );
 
+  const jobStatusLabels = { all: t.all, draft: t.draft, published: t.live, closed: t.closed };
+  const candidateStageLabels = {
+    all: t.candidateFilterAll, stale: t.attentionStale,
+    new: t.new, screening: t.screening, shortlisted: t.shortlisted,
+    interview: t.interview, offer: t.offer, hired: t.hired
+  };
+  const historyLoadingText = lang === "ar" ? "جاري التحميل…" : "Loading…";
+  const historyEmptyText = lang === "ar" ? "لا يوجد سجل سابق." : "No events recorded.";
+  const historyActorLabels = lang === "ar"
+    ? { team: "فريق التوظيف", system: "نظام التقديم" }
+    : { team: "Recruitment team", system: "Application system" };
+  const modalTitles = { job: editingJobId ? t.editJob : t.quickJob, candidate: t.quickCandidate };
+
   const summary = [
     { label: t.jobs, count: data.counts.jobs, icon: BriefcaseBusinessIcon },
     { label: t.published, count: data.counts.published, icon: CheckCircle2Icon },
@@ -435,7 +446,7 @@ export function RecruitmentDashboard({
         </div>
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <div className="mb-2 inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
+            <div className="mb-2 inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-2 text-xs font-medium text-primary">
               <SparklesIcon className="size-3.5" /> ATS / Recruitment
             </div>
             <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">{t.title}</h1>
@@ -533,7 +544,7 @@ export function RecruitmentDashboard({
             <div
               role="tablist"
               aria-label="Recruitment sections"
-              className="flex rounded-xl bg-muted p-1"
+              className="flex rounded-xl bg-muted p-2"
             >
               <Button
                 role="tab"
@@ -601,13 +612,7 @@ export function RecruitmentDashboard({
                         : "border-border text-muted-foreground hover:text-foreground",
                     )}
                   >
-                    {status === "all"
-                      ? t.all
-                      : status === "published"
-                        ? t.live
-                        : status === "draft"
-                          ? t.draft
-                          : t.closed}
+                    {jobStatusLabels[status]}
                   </Button>
                 ))}
               </div>
@@ -616,7 +621,7 @@ export function RecruitmentDashboard({
                   {filteredJobs.map((item) => (
                     <article
                       key={item.id}
-                      className="group rounded-2xl border border-border bg-background/60 p-4 transition-colors hover:border-primary/40 sm:p-5"
+                      className="group border-b border-border/70 p-4 transition-colors hover:bg-muted/30 last:border-b-0 sm:p-5"
                     >
                       <div className="mb-4 flex items-start justify-between gap-4">
                         <div className="min-w-0">
@@ -639,11 +644,7 @@ export function RecruitmentDashboard({
                               : "bg-muted text-muted-foreground",
                           )}
                         >
-                          {item.status === "published"
-                            ? t.live
-                            : item.status === "draft"
-                              ? t.draft
-                              : t.closed}
+                          {jobStatusLabels[item.status]}
                         </span>
                       </div>
                       {item.description && (
@@ -771,11 +772,7 @@ export function RecruitmentDashboard({
                         : "border-border text-muted-foreground hover:text-foreground",
                     )}
                   >
-                    {stage === "all"
-                      ? t.candidateFilterAll
-                      : stage === "stale"
-                        ? t.attentionStale
-                        : t[stage]}
+                    {candidateStageLabels[stage]}
                   </Button>
                 ))}
               </div>
@@ -784,7 +781,7 @@ export function RecruitmentDashboard({
                   {filteredApplications.map((app) => (
                     <article
                       key={app.id}
-                      className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-border bg-background/60 p-4"
+                      className="flex flex-wrap items-center justify-between gap-4 border-b border-border/70 p-4 last:border-b-0"
                     >
                       <div className="flex min-w-0 items-center gap-3">
                         <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 font-semibold text-primary">
@@ -849,37 +846,20 @@ export function RecruitmentDashboard({
                               lang === "ar" ? "سجل مراحل المرشح" : "Candidate stage history"
                             }
                           >
-                            {historyLoadingId === app.id
-                              ? lang === "ar"
-                                ? "جاري التحميل..."
-                                : "Loading..."
-                              : historyItems[app.id]?.length
-                                ? historyItems[app.id]?.map((event) => (
-                                    <div
-                                      key={event.id}
-                                      className="flex flex-wrap items-center justify-between gap-2 border-b border-border/50 py-2 last:border-0"
-                                    >
-                                      <span className="font-medium">
-                                        {stageLabels.get(event.to_stage) ?? event.to_stage}
-                                      </span>
-                                      <span className="text-muted-foreground">
-                                        {event.changed_by_team
-                                          ? lang === "ar"
-                                            ? "فريق التوظيف"
-                                            : "Recruitment team"
-                                          : lang === "ar"
-                                            ? "نظام التقديم"
-                                            : "Application system"}
-                                        {" · "}
-                                        {(lang === "ar" ? historyDateAr : historyDateEn).format(
-                                          new Date(event.created_at),
-                                        )}
-                                      </span>
-                                    </div>
-                                  ))
-                                : lang === "ar"
-                                  ? "لا يوجد سجل سابق."
-                                  : "No events recorded."}
+                            {historyLoadingId === app.id && <p>{historyLoadingText}</p>}
+                            {historyLoadingId !== app.id && (
+                              historyItems[app.id]?.length
+                                ? historyItems[app.id]?.map(event => (
+                                  <div key={event.id} className="flex flex-wrap items-center justify-between gap-2 border-b border-border/50 py-2 last:border-0">
+                                    <span className="font-medium">{stageLabels.get(event.to_stage) ?? event.to_stage}</span>
+                                    <span className="text-muted-foreground">
+                                      {historyActorLabels[event.changed_by_team ? "team" : "system"]}
+                                      {" · "}{(lang === "ar" ? historyDateAr : historyDateEn).format(new Date(event.created_at))}
+                                    </span>
+                                  </div>
+                                ))
+                                : <p>{historyEmptyText}</p>
+                            )}
                           </section>
                         )}
                       </div>
@@ -974,12 +954,12 @@ export function RecruitmentDashboard({
           }}
           dir={lang === "ar" ? "rtl" : "ltr"}
           lang={lang === "ar" ? "ar-SA" : "en"}
-          className="fixed inset-0 z-50 m-auto max-h-[calc(100dvh-2rem)] w-full max-w-xl overflow-y-auto rounded-2xl bg-card p-5 text-foreground backdrop:bg-black/70 sm:p-7"
+          className="fixed inset-0 z-50 m-auto max-h-dvh w-full max-w-xl overflow-y-auto rounded-2xl bg-card p-5 text-foreground backdrop:bg-black/70 sm:p-7"
         >
           <div className="mb-5 flex items-center justify-between">
             <div>
               <h2 id="ats-dialog-title" className="text-xl font-semibold">
-                {dialog === "job" ? (editingJobId ? t.editJob : t.quickJob) : t.quickCandidate}
+                {modalTitles[dialog || 'job']}
               </h2>
               <p className="mt-1 text-xs text-muted-foreground">
                 {dialog === "job" ? t.jobHint : t.candidateHint}
@@ -1078,7 +1058,7 @@ export function RecruitmentDashboard({
                 <span className={fieldLabel}>{t.description}</span>
                 <Textarea
                   name="job-description"
-                  maxLength={10000}
+                  maxLength={10_000}
                   rows={4}
                   className={cn(field, "resize-y py-3")}
                   value={job.description}
@@ -1107,6 +1087,7 @@ export function RecruitmentDashboard({
                 void act(
                   () => addRecruitmentCandidateServerFn({ data: { workspaceSlug, ...candidate } }),
                   true,
+                  result => result.alreadyExists ? t.alreadyExists : t.saved,
                 );
               }}
             >
