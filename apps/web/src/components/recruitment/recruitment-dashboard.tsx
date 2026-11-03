@@ -1,3 +1,7 @@
+import { Button } from '@/components/ui/button'
+import { Label } from '@/components/ui/label'
+import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
 import { useMemo, useState } from 'react'
 import { useRouter } from '@tanstack/react-router'
 import {
@@ -206,9 +210,9 @@ export function RecruitmentDashboard({
       <section lang={lang === 'ar' ? 'ar-SA' : 'en'} dir={lang === 'ar' ? 'rtl' : 'ltr'} className="mx-auto max-w-7xl space-y-6 pb-14 font-sans">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <p className="text-xs font-medium tracking-wide text-muted-foreground">{t.eyebrow}</p>
-          <button className={pill + ' min-h-9'} type="button" onClick={() => setLang(lang === 'ar' ? 'en' : 'ar')} aria-label="Change language">
+          <Button className={pill + ' min-h-9'} type="button" onClick={() => setLang(lang === 'ar' ? 'en' : 'ar')} aria-label="Change language">
             {t.switchLanguage}
-          </button>
+          </Button>
         </div>
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
@@ -219,12 +223,12 @@ export function RecruitmentDashboard({
             <p className="mt-2 max-w-xl text-sm text-muted-foreground sm:text-base">{t.intro}</p>
           </div>
           <div className="flex w-full flex-wrap gap-2 sm:w-auto">
-            <button type="button" className={pill + ' flex-1 sm:flex-none'} onClick={() => openDialog('candidate')} disabled={data.jobs.length === 0}>
+            <Button type="button" className={pill + ' flex-1 sm:flex-none'} onClick={() => openDialog('candidate')} disabled={data.jobs.length === 0}>
               <UsersRoundIcon className="size-4" /> {t.addCandidate}
-            </button>
-            <button type="button" className={primary + ' flex-1 sm:flex-none'} onClick={() => openDialog('job')}>
+            </Button>
+            <Button type="button" className={primary + ' flex-1 sm:flex-none'} onClick={() => openDialog('job')}>
               <CirclePlusIcon className="size-4" /> {t.newJob}
-            </button>
+            </Button>
           </div>
         </div>
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
@@ -249,41 +253,41 @@ export function RecruitmentDashboard({
               { label: t.attentionStale, count: data.counts.staleApplications, stage: 'stale' },
               { label: t.attentionInterviews, count: data.counts.interviewing, stage: 'interview' }
             ]).map(item => (
-              <button key={item.label} type="button" className="min-h-24 rounded-xl border border-border bg-background/60 p-4 text-start hover:border-primary/50"
+              <Button key={item.label} type="button" className="min-h-24 rounded-xl border border-border bg-background/60 p-4 text-start hover:border-primary/50"
                 onClick={() => { setTab('candidates'); setCandidateStage(item.stage); setSearch('') }}>
                 <span className="block text-sm text-muted-foreground">{item.label}</span>
                 <span className="mt-2 block text-2xl font-bold tabular-nums">{item.count}</span>
-              </button>
+              </Button>
             ))}
           </div>
         </section>
         {(notice || error) && (
           <div role={error ? 'alert' : 'status'} className={'flex items-center justify-between rounded-xl border px-4 py-3 text-sm ' + (error ? 'border-destructive/50 text-destructive' : 'border-primary/40 text-foreground')}>
             <span>{error || notice}</span>
-            <button type="button" onClick={() => { setNotice(''); setError('') }} aria-label="Dismiss"><XIcon className="size-4"/></button>
+            <Button type="button" onClick={() => { setNotice(''); setError('') }} aria-label="Dismiss"><XIcon className="size-4"/></Button>
           </div>
         )}
         <div className="rounded-2xl border border-border bg-card">
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border p-4 sm:p-5">
             <div role="tablist" aria-label="Recruitment sections" className="flex rounded-xl bg-muted p-1">
-              <button role="tab" type="button" aria-selected={tab === 'jobs'} className={'rounded-lg px-4 py-2 text-sm font-medium ' + (tab === 'jobs' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground')} onClick={() => { setTab('jobs'); setSearch('') }}>{t.jobs}</button>
-              <button role="tab" type="button" aria-selected={tab === 'candidates'} className={'rounded-lg px-4 py-2 text-sm font-medium ' + (tab === 'candidates' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground')} onClick={() => { setTab('candidates'); setSearch('') }}>{t.applicants}</button>
+              <Button role="tab" type="button" aria-selected={tab === 'jobs'} className={'rounded-lg px-4 py-2 text-sm font-medium ' + (tab === 'jobs' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground')} onClick={() => { setTab('jobs'); setSearch('') }}>{t.jobs}</Button>
+              <Button role="tab" type="button" aria-selected={tab === 'candidates'} className={'rounded-lg px-4 py-2 text-sm font-medium ' + (tab === 'candidates' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground')} onClick={() => { setTab('candidates'); setSearch('') }}>{t.applicants}</Button>
             </div>
-            <label className="relative w-full sm:w-72">
+            <Label className="relative w-full sm:w-72">
               <SearchIcon aria-hidden className="absolute top-3.5 start-3 size-4 text-muted-foreground"/>
               <span className="sr-only">{t.search}</span>
-              <input className={field + ' ps-10'} value={search} onChange={e => setSearch(e.target.value)} placeholder={t.search} />
-            </label>
+              <Input className={field + ' ps-10'} value={search} onChange={e => setSearch(e.target.value)} placeholder={t.search} />
+            </Label>
           </div>
           {tab === 'jobs' ? (
             <div className="p-4 sm:p-5">
               <div className="mb-4 flex flex-wrap gap-2">
                 {(['all','published','draft','closed'] as const).map(status => (
-                  <button key={status} type="button" onClick={() => setFilter(status)}
+                  <Button key={status} type="button" onClick={() => setFilter(status)}
                     aria-pressed={filter === status}
                     className={'rounded-full border px-3 py-1.5 text-xs font-medium ' + (filter === status ? 'border-primary bg-primary/10 text-primary' : 'border-border text-muted-foreground hover:text-foreground')}>
                     {status === 'all' ? t.all : status === 'published' ? t.live : status === 'draft' ? t.draft : t.closed}
-                  </button>
+                  </Button>
                 ))}
               </div>
               {filteredJobs.length ? (
@@ -307,22 +311,22 @@ export function RecruitmentDashboard({
                       <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-3">
                         <span className="text-xs text-muted-foreground">{item.application_count} {t.apply}</span>
                         <div className="flex flex-wrap gap-2">
-                          <button type="button" disabled={busy} className={pill + ' min-h-9 px-3 text-xs'}
-                            onClick={() => editJob(item)}>{t.editJob}</button>
+                          <Button type="button" disabled={busy} className={pill + ' min-h-9 px-3 text-xs'}
+                            onClick={() => editJob(item)}>{t.editJob}</Button>
                           {item.status === 'published' && <a target="_blank" rel="noopener noreferrer"
                             href={`/careers/${encodeURIComponent(workspaceSlug)}#job-${encodeURIComponent(item.id)}`}
                             className={pill + ' min-h-9 px-3 text-xs'}>{t.viewPublic} <ArrowUpRightIcon className="size-3.5"/></a>}
                           {item.status !== 'closed' && (
-                            <button type="button" disabled={busy} className={pill + ' min-h-9 px-3 text-xs'}
+                            <Button type="button" disabled={busy} className={pill + ' min-h-9 px-3 text-xs'}
                               onClick={() => void act(() => updateRecruitmentJobStatusServerFn({ data: { workspaceSlug, jobId: item.id, status: item.status === 'published' ? 'draft' : 'published' } }))}>
                               {item.status === 'published' ? t.unpublish : t.publish}
-                            </button>
+                            </Button>
                           )}
                           {item.status !== 'closed' && (
-                            <button type="button" disabled={busy} className="text-xs text-muted-foreground hover:text-foreground"
-                              onClick={() => void act(() => updateRecruitmentJobStatusServerFn({ data: { workspaceSlug, jobId: item.id, status: 'closed' } }))}>{t.closeJob}</button>
+                            <Button type="button" disabled={busy} className="text-xs text-muted-foreground hover:text-foreground"
+                              onClick={() => void act(() => updateRecruitmentJobStatusServerFn({ data: { workspaceSlug, jobId: item.id, status: 'closed' } }))}>{t.closeJob}</Button>
                           )}
-                          {item.status === 'closed' && <button type="button" disabled={busy} className={pill + ' min-h-9 text-xs'} onClick={() => void act(() => updateRecruitmentJobStatusServerFn({ data: { workspaceSlug, jobId: item.id, status: 'draft' } }))}>{t.draft}</button>}
+                          {item.status === 'closed' && <Button type="button" disabled={busy} className={pill + ' min-h-9 text-xs'} onClick={() => void act(() => updateRecruitmentJobStatusServerFn({ data: { workspaceSlug, jobId: item.id, status: 'draft' } }))}>{t.draft}</Button>}
                         </div>
                       </div>
                     </article>
@@ -334,13 +338,13 @@ export function RecruitmentDashboard({
             <div className="p-4 sm:p-5">
               <div className="mb-4 flex flex-wrap gap-2">
                 {(['all','new','stale','screening','shortlisted','interview','offer','hired'] as const).map(stage => (
-                  <button key={stage} type="button" aria-pressed={candidateStage === stage}
+                  <Button key={stage} type="button" aria-pressed={candidateStage === stage}
                     onClick={() => setCandidateStage(stage)}
                     className={'rounded-full border px-3 py-1.5 text-xs font-medium ' +
                       (candidateStage === stage ? 'border-primary bg-primary/10 text-primary' :
                         'border-border text-muted-foreground hover:text-foreground')}>
                     {stage === 'all' ? t.candidateFilterAll : stage === 'stale' ? t.attentionStale : t[stage]}
-                  </button>
+                  </Button>
                 ))}
               </div>
               {filteredApplications.length ? (
@@ -358,18 +362,18 @@ export function RecruitmentDashboard({
                         </div>
                       </div>
                       <div className="flex w-full items-center gap-2 sm:w-auto">
-                        <label className="text-xs text-muted-foreground" htmlFor={'stage-' + app.id}>{t.stage}</label>
+                        <Label className="text-xs text-muted-foreground" htmlFor={'stage-' + app.id}>{t.stage}</Label>
                         <select dir={lang === 'ar' ? 'rtl' : 'ltr'} id={'stage-' + app.id} disabled={busy} value={app.stage}
                           className={field + ' min-w-44 flex-1 sm:flex-none'} onChange={e => void act(() => moveRecruitmentApplicationServerFn({data: {workspaceSlug, applicationId: app.id, stage: e.target.value}}))}>
                           {stages.map(stage => <option value={stage} key={stage}>{t[stage]}</option>)}
                         </select>
                       </div>
                       <div className="w-full border-t border-border/60 pt-3">
-                        <button type="button" className="text-xs font-medium text-primary underline-offset-4 hover:underline"
+                        <Button type="button" className="text-xs font-medium text-primary underline-offset-4 hover:underline"
                           aria-expanded={openHistoryId === app.id}
                           onClick={() => { void toggleHistory(app.id) }}>
                           {lang === 'ar' ? 'عرض سجل المراحل' : 'View stage history'}
-                        </button>
+                        </Button>
                         {openHistoryId === app.id && (
                           <div className="mt-3 space-y-2 rounded-xl bg-muted/50 p-3 text-xs" role="region"
                             aria-label={lang === 'ar' ? 'سجل مراحل المرشح' : 'Candidate stage history'}>
@@ -406,26 +410,26 @@ export function RecruitmentDashboard({
               data: { workspaceSlug, privacyPolicyUrl: privacyUrl, acceptApplications }
             }))
           }}>
-            <label className="block">
+            <Label className="block">
               <span className={fieldLabel}>{t.privacyUrlLabel}</span>
-              <input className={field} type="url" required={acceptApplications}
+              <Input className={field} type="url" required={acceptApplications}
                 pattern="https://.*" autoComplete="url" maxLength={1000}
                 placeholder="https://company.example/privacy"
                 value={privacyUrl} onChange={e => setPrivacyUrl(e.target.value)} />
-            </label>
-            <label className="flex items-start gap-3 text-sm">
-              <input type="checkbox" className="mt-1 size-4 accent-primary"
+            </Label>
+            <Label className="flex items-start gap-3 text-sm">
+              <Input type="checkbox" className="mt-1 size-4 accent-primary"
                 checked={acceptApplications}
                 onChange={e => setAcceptApplications(e.target.checked)} />
               <span>{t.privacyEnable}</span>
-            </label>
+            </Label>
             <p role="status" className="text-xs text-muted-foreground">
               {data.settings.runtimeConfigured ? t.privacyConfigured : t.privacyNotConfigured}
             </p>
-            <button type="submit" className={primary}
+            <Button type="submit" className={primary}
               disabled={busy || (acceptApplications && !privacyUrl.startsWith('https://'))}>
               {t.privacySave}
-            </button>
+            </Button>
           </form>
           <p className="mt-4 text-xs text-muted-foreground">{t.previewOnly}</p>
         </section>
@@ -440,29 +444,29 @@ export function RecruitmentDashboard({
                 <h2 id="ats-dialog-title" className="text-xl font-semibold">{dialog === 'job' ? (editingJobId ? t.editJob : t.quickJob) : t.quickCandidate}</h2>
                 <p className="mt-1 text-xs text-muted-foreground">{dialog === 'job' ? t.jobHint : t.candidateHint}</p>
               </div>
-              <button type="button" aria-label="Close" className="rounded-lg p-2 hover:bg-muted" disabled={busy} onClick={() => setDialog(null)}><XIcon className="size-5"/></button>
+              <Button type="button" aria-label="Close" className="rounded-lg p-2 hover:bg-muted" disabled={busy} onClick={() => setDialog(null)}><XIcon className="size-5"/></Button>
             </div>
             {error && <p role="alert" className="mb-4 rounded-lg border border-destructive/40 p-3 text-sm text-destructive">{error}</p>}
             {dialog === 'job' ? (
               <form className="space-y-4" onSubmit={e => { e.preventDefault(); void act(() => editingJobId ? editRecruitmentJobServerFn({data: {workspaceSlug, jobId: editingJobId, ...job}}) : createRecruitmentJobServerFn({data: {workspaceSlug, ...job}}), true) }}>
-                <label className="block"><span className={fieldLabel}>{t.jobTitle} *</span><input autoFocus required minLength={3} maxLength={150} className={field} value={job.title} onChange={e => setJob({...job, title: e.target.value})} placeholder={lang==='ar'?'مثال: أخصائي مبيعات عقارية':'e.g. Real Estate Sales Specialist'}/></label>
+                <Label className="block"><span className={fieldLabel}>{t.jobTitle} *</span><Input autoFocus required minLength={3} maxLength={150} className={field} value={job.title} onChange={e => setJob({...job, title: e.target.value})} placeholder={lang==='ar'?'مثال: أخصائي مبيعات عقارية':'e.g. Real Estate Sales Specialist'}/></Label>
                 <div className="grid gap-4 sm:grid-cols-2">
-                  <label className="block"><span className={fieldLabel}>{t.department}</span><input maxLength={100} className={field} value={job.department} onChange={e=>setJob({...job,department:e.target.value})}/></label>
-                  <label className="block"><span className={fieldLabel}>{t.location}</span><input maxLength={100} className={field} value={job.location} onChange={e=>setJob({...job,location:e.target.value})} placeholder={lang==='ar'?'جدة، السعودية':'Jeddah, Saudi Arabia'}/></label>
+                  <Label className="block"><span className={fieldLabel}>{t.department}</span><Input maxLength={100} className={field} value={job.department} onChange={e=>setJob({...job,department:e.target.value})}/></Label>
+                  <Label className="block"><span className={fieldLabel}>{t.location}</span><Input maxLength={100} className={field} value={job.location} onChange={e=>setJob({...job,location:e.target.value})} placeholder={lang==='ar'?'جدة، السعودية':'Jeddah, Saudi Arabia'}/></Label>
                 </div>
-                <label className="block"><span className={fieldLabel}>{t.employment}</span><select className={field} value={job.employmentType} onChange={e=>setJob({...job,employmentType:e.target.value})}><option value="full_time">{t.fullTime}</option><option value="part_time">{t.partTime}</option><option value="contract">{t.contract}</option><option value="internship">{t.internship}</option></select></label>
-                <label className="block"><span className={fieldLabel}>{t.description}</span><textarea maxLength={10000} rows={4} className={field + ' resize-y py-3'} value={job.description} onChange={e=>setJob({...job,description:e.target.value})}/></label>
-                <div className="flex justify-end gap-2 pt-3"><button type="button" className={pill} disabled={busy} onClick={()=>setDialog(null)}>{t.cancel}</button><button type="submit" className={primary} disabled={busy || !job.title.trim()}>{editingJobId ? t.saveChanges : t.saveJob} <ArrowUpRightIcon className="size-4"/></button></div>
+                <Label className="block"><span className={fieldLabel}>{t.employment}</span><select className={field} value={job.employmentType} onChange={e=>setJob({...job,employmentType:e.target.value})}><option value="full_time">{t.fullTime}</option><option value="part_time">{t.partTime}</option><option value="contract">{t.contract}</option><option value="internship">{t.internship}</option></select></Label>
+                <Label className="block"><span className={fieldLabel}>{t.description}</span><Textarea maxLength={10000} rows={4} className={field + ' resize-y py-3'} value={job.description} onChange={e=>setJob({...job,description:e.target.value})}/></Label>
+                <div className="flex justify-end gap-2 pt-3"><Button type="button" className={pill} disabled={busy} onClick={()=>setDialog(null)}>{t.cancel}</Button><Button type="submit" className={primary} disabled={busy || !job.title.trim()}>{editingJobId ? t.saveChanges : t.saveJob} <ArrowUpRightIcon className="size-4"/></Button></div>
               </form>
             ) : (
               <form className="space-y-4" onSubmit={e => { e.preventDefault(); void act(() => addRecruitmentCandidateServerFn({data:{workspaceSlug,...candidate}}),true) }}>
-                <label className="block"><span className={fieldLabel}>{t.name} *</span><input required minLength={2} maxLength={150} autoFocus className={field} value={candidate.fullName} onChange={e=>setCandidate({...candidate,fullName:e.target.value})}/></label>
-                <label className="block"><span className={fieldLabel}>{t.job} *</span><select required className={field} value={candidate.jobId} onChange={e=>setCandidate({...candidate,jobId:e.target.value})}><option value="">{t.chooseJob}</option>{data.jobs.map(item=><option value={item.id} key={item.id}>{item.title}</option>)}</select></label>
+                <Label className="block"><span className={fieldLabel}>{t.name} *</span><Input required minLength={2} maxLength={150} autoFocus className={field} value={candidate.fullName} onChange={e=>setCandidate({...candidate,fullName:e.target.value})}/></Label>
+                <Label className="block"><span className={fieldLabel}>{t.job} *</span><select required className={field} value={candidate.jobId} onChange={e=>setCandidate({...candidate,jobId:e.target.value})}><option value="">{t.chooseJob}</option>{data.jobs.map(item=><option value={item.id} key={item.id}>{item.title}</option>)}</select></Label>
                 <div className="grid gap-4 sm:grid-cols-2">
-                  <label className="block"><span className={fieldLabel}>{t.phone}</span><input type="tel" dir="ltr" maxLength={40} className={field} value={candidate.phone} onChange={e=>setCandidate({...candidate,phone:e.target.value})} placeholder="+966 5..."/></label>
-                  <label className="block"><span className={fieldLabel}>{t.email}</span><input type="email" dir="ltr" maxLength={250} className={field} value={candidate.email} onChange={e=>setCandidate({...candidate,email:e.target.value})} placeholder="name@example.com"/></label>
+                  <Label className="block"><span className={fieldLabel}>{t.phone}</span><Input type="tel" dir="ltr" maxLength={40} className={field} value={candidate.phone} onChange={e=>setCandidate({...candidate,phone:e.target.value})} placeholder="+966 5..."/></Label>
+                  <Label className="block"><span className={fieldLabel}>{t.email}</span><Input type="email" dir="ltr" maxLength={250} className={field} value={candidate.email} onChange={e=>setCandidate({...candidate,email:e.target.value})} placeholder="name@example.com"/></Label>
                 </div>
-                <div className="flex justify-end gap-2 pt-3"><button type="button" className={pill} disabled={busy} onClick={()=>setDialog(null)}>{t.cancel}</button><button type="submit" className={primary} disabled={busy || !candidate.fullName.trim() || !candidate.jobId || !(candidate.phone.trim() || candidate.email.trim())}>{t.saveCandidate} <ArrowUpRightIcon className="size-4"/></button></div>
+                <div className="flex justify-end gap-2 pt-3"><Button type="button" className={pill} disabled={busy} onClick={()=>setDialog(null)}>{t.cancel}</Button><Button type="submit" className={primary} disabled={busy || !candidate.fullName.trim() || !candidate.jobId || !(candidate.phone.trim() || candidate.email.trim())}>{t.saveCandidate} <ArrowUpRightIcon className="size-4"/></Button></div>
               </form>
             )}
           </div>
@@ -483,7 +487,7 @@ function EmptyState({ title, description, icon: Icon, action }: {
       <div className="rounded-2xl bg-muted p-4"><Icon className="size-7 text-muted-foreground"/></div>
       <h2 className="text-base font-semibold">{title}</h2>
       {description && <p className="max-w-sm text-sm text-muted-foreground">{description}</p>}
-      {action && <button type="button" className={primary} onClick={action.onClick}><CirclePlusIcon className="size-4"/>{action.label}</button>}
+      {action && <Button type="button" className={primary} onClick={action.onClick}><CirclePlusIcon className="size-4"/>{action.label}</Button>}
     </div>
   )
 }
