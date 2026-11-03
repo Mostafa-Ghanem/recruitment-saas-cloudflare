@@ -1,5 +1,5 @@
 import { env } from 'cloudflare:workers'
-import type { PublicCareersData, PublicRecruitmentJob } from './public-careers'
+import { type PublicCareersData, type PublicRecruitmentJob } from './public-careers'
 
 /**
  * Anonymous read: only public workspace name and published job fields,
@@ -36,7 +36,7 @@ export async function loadPublicCareersHandler(input: {
   return {
     company: workspace.name, slug, jobs: result.results,
     applicationConfig: enabled
-      ? { enabled: true, siteKey: env.TURNSTILE_SITE_KEY || '', privacyPolicyUrl: settings?.privacy_policy_url || '' }
+      ? { enabled: true, siteKey: env.TURNSTILE_SITE_KEY || '', privacyPolicyUrl: privacyUrl?.href ?? '' }
       : disabled
   }
 }
