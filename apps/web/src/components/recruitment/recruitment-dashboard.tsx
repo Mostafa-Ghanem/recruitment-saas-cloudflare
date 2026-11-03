@@ -1053,7 +1053,7 @@ export function RecruitmentDashboard({
           <div className="mb-5 flex items-center justify-between">
             <div>
               <h2 id="ats-dialog-title" className="text-xl font-semibold">
-                {modalTitles[dialog || 'job']}
+                {modalTitles[dialog]}
               </h2>
               <p className="mt-1 text-xs text-muted-foreground">
                 {dialog === 'job' ? t.jobHint : t.candidateHint}

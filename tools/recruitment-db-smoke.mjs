@@ -268,6 +268,3 @@ assert.equal(
   0
 )
 db.close()
-process.stdout.write(
-  'PASS: ATS migrations, tenant isolation, idempotency, identity uniqueness, stage audit, suspension gate, rate limit, aggregate counts, cascade deletion\n'
-)

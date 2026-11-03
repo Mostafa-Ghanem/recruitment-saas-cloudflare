@@ -9,6 +9,7 @@ const TurnstilePayload = Schema.Struct({
   action: Schema.optional(Schema.String),
   hostname: Schema.optional(Schema.String)
 })
+const decodeTurnstilePayload = Schema.decodeUnknownSync(TurnstilePayload)
 const ACTION = 'recruitment_apply'
 const RATE_LIMIT = 10
 const HOUR_SECONDS = 3600
@@ -60,7 +61,7 @@ async function verifyTurnstile(
     if (!response.ok) {
       throw new Error('Turnstile unavailable')
     }
-    answer = Schema.decodeUnknownSync(TurnstilePayload)(await response.json())
+    answer = decodeTurnstilePayload(await response.json())
   } catch {
     throw new Error('Security check unavailable. Please try again')
   }
