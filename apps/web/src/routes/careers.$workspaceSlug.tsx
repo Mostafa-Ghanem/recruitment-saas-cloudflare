@@ -113,13 +113,7 @@ function CareersRoute() {
                 )}
                 <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4">
                   <p className="text-xs text-muted-foreground">
-                    {data.applicationConfig.enabled
-                      ? ar
-                        ? "تقديم سريع بدون إنشاء حساب"
-                        : "Quick application with no account"
-                      : ar
-                        ? "التقديم الإلكتروني لهذه الوظيفة لم يُفعّل بعد."
-                        : "Online applications are not enabled for this role yet."}
+                    {data.applicationConfig.enabled ? copy.applyEnabled : copy.applyDisabled}
                   </p>
                   {data.applicationConfig.enabled && (
                     <Button
@@ -130,13 +124,7 @@ function CareersRoute() {
                       className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-primary px-5 font-semibold text-primary-foreground hover:opacity-90"
                     >
                       <ArrowUpRightIcon aria-hidden className="size-4" />
-                      {activeJobId === job.id
-                        ? ar
-                          ? "إغلاق التقديم"
-                          : "Close application"
-                        : ar
-                          ? "قدّم الآن"
-                          : "Apply now"}
+                      {activeJobId === job.id ? copy.close : copy.open}
                     </Button>
                   )}
                 </div>
