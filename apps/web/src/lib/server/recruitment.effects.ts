@@ -5,11 +5,11 @@ import { WorkspaceContext } from '@b2b-saas-starter/capabilities/workspace-conte
 import { runWorkspaceCapabilities } from '../capabilities'
 import { requireRequestSession } from './auth'
 import { requireWorkspacePermission } from './authorize'
-import type {
-  RecruitmentApplication,
-  RecruitmentJob,
-  RecruitmentOverview,
-  RecruitmentStageEvent
+import {
+  type RecruitmentApplication,
+  type RecruitmentJob,
+  type RecruitmentOverview,
+  type RecruitmentStageEvent
 } from './recruitment'
 
 /**
@@ -61,7 +61,7 @@ export async function loadRecruitmentHandler(input: {
   workspaceSlug: string
 }): Promise<RecruitmentOverview> {
   const { workspaceId, role, db } = await authorizedWorkspace(input.workspaceSlug)
-  const staleBefore = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString()
+  const staleBefore = new Date(Date.now() - 48 * 60 * 60 * 1_000).toISOString()
   type CountRow = {
     jobs_count: number
     published_count: number
@@ -131,7 +131,7 @@ export async function createRecruitmentJobHandler(input: {
   const title = clean(input.title, 150)
   const department = clean(input.department, 100)
   const location = clean(input.location, 100)
-  const description = clean(input.description, 10000)
+  const description = clean(input.description, 10_000)
   if (title.length < 3 || !EMPLOYMENT_TYPES.has(input.employmentType)) {
     throw new Error('Validation: job title or employment type is invalid')
   }
@@ -162,9 +162,11 @@ export async function editRecruitmentJobHandler(input: {
     SET title=?,department=?,location=?,employment_type=?,description=?,updated_at=?
     WHERE workspace_id=? AND id=?`)
     .bind(title,clean(input.department,100),clean(input.location,100),
-      input.employmentType,clean(input.description,10000),new Date().toISOString(),
+      input.employmentType,clean(input.description,10_000),new Date().toISOString(),
       workspaceId,input.jobId).run()
-  if (update.meta.changes === 0) throw new Error('Job not found in this workspace')
+  if (update.meta.changes === 0) {
+    throw new Error('Job not found in this workspace')
+  }
 }
 
 export async function updateRecruitmentJobStatusHandler(input: {
@@ -179,7 +181,9 @@ export async function updateRecruitmentJobStatusHandler(input: {
   if (input.status === 'published') {
     const details = await db.prepare('SELECT description,location FROM recruitment_jobs WHERE workspace_id=? AND id=?')
       .bind(workspaceId,input.jobId).first<{ description: string; location: string }>()
-    if (!details) throw new Error('Job not found in this workspace')
+    if (!details) {
+      throw new Error('Job not found in this workspace')
+    }
     if (details.description.trim().length < 80 || !details.location.trim()) {
       throw new Error('PUBLISH_DETAILS_REQUIRED')
     }
@@ -200,7 +204,7 @@ export async function addRecruitmentCandidateHandler(input: {
   const { workspaceId, db } = await authorizedWorkspace(input.workspaceSlug)
   const fullName = clean(input.fullName, 150)
   const email = clean(input.email, 250).toLowerCase()
-  const phone = clean(input.phone, 40).replace(/[\s().-]/g, '')
+  const phone = clean(input.phone, 40).replaceAll(/[\s().-]/g, '')
   if (fullName.length < 2 || (!email && !phone) || (phone !== '' && !/^\+?\d{7,15}$/.test(phone)) || (email !== '' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))) {
     throw new Error('Validation: name and valid contact details are required')
   }
@@ -222,9 +226,13 @@ export async function addRecruitmentCandidateHandler(input: {
     const previous = await db.prepare(`SELECT id FROM recruitment_applications
       WHERE workspace_id=? AND job_id=? AND candidate_id=? LIMIT 1`)
       .bind(workspaceId, input.jobId, existingCandidate.id).first()
-    if (previous) return { alreadyExists: true }
+    if (previous) {
+      return { alreadyExists: true }
+    }
     const applicationId = crypto.randomUUID()
     const now = new Date().toISOString()
+    const actorSession = await requireRequestSession()
+    const actorUserId = actorSession.user.id
     await db.batch([
       db.prepare(`INSERT INTO recruitment_applications
         (id,workspace_id,job_id,candidate_id,stage,created_at,updated_at)
@@ -233,14 +241,15 @@ export async function addRecruitmentCandidateHandler(input: {
       db.prepare(`INSERT INTO recruitment_stage_history
         (id,workspace_id,application_id,from_stage,to_stage,actor_user_id,created_at)
         VALUES (?,?,?,NULL,'new',?,?)`)
-        .bind(crypto.randomUUID(),workspaceId,applicationId,(await requireRequestSession()).user.id,now)
+        .bind(crypto.randomUUID(),workspaceId,applicationId,actorUserId,now)
     ])
     return { alreadyExists: false }
   }
   const candidateId = crypto.randomUUID()
   const now = new Date().toISOString()
   const applicationId = crypto.randomUUID()
-  const actorUserId = (await requireRequestSession()).user.id
+  const actorSession = await requireRequestSession()
+  const actorUserId = actorSession.user.id
   await db.batch([
     db.prepare(`INSERT INTO recruitment_candidates (id,workspace_id,full_name,email,phone,created_at)
       VALUES (?,?,?,?,?,?)`).bind(candidateId,workspaceId,fullName,email,phone,now),
@@ -268,8 +277,12 @@ export async function moveRecruitmentApplicationHandler(input: {
   const application = await db.prepare(`SELECT stage FROM recruitment_applications
     WHERE workspace_id=? AND id=? LIMIT 1`)
     .bind(workspaceId, input.applicationId).first<{ stage: string }>()
-  if (!application) throw new Error('Application not found in this workspace')
-  if (application.stage === input.stage) return
+  if (!application) {
+    throw new Error('Application not found in this workspace')
+  }
+  if (application.stage === input.stage) {
+    return
+  }
 
   const now = new Date().toISOString()
   // The conditional update is optimistic: simultaneous edits cannot silently
@@ -326,7 +339,9 @@ export async function loadRecruitmentApplicationHistoryHandler(input: {
   const { workspaceId, db } = await authorizedWorkspace(input.workspaceSlug)
   const app = await db.prepare('SELECT id FROM recruitment_applications WHERE workspace_id=? AND id=? LIMIT 1')
     .bind(workspaceId, input.applicationId).first()
-  if (!app) throw new Error('Application not found in this workspace')
+  if (!app) {
+    throw new Error('Application not found in this workspace')
+  }
   const result = await db.prepare(`SELECT id,from_stage,to_stage,
       CASE WHEN actor_user_id IS NULL THEN 0 ELSE 1 END AS changed_by_team,created_at
     FROM recruitment_stage_history
