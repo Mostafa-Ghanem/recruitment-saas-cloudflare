@@ -53,7 +53,7 @@ export async function loadPublicCareersHandler(input: {
       ? {
           enabled: true,
           siteKey: env.TURNSTILE_SITE_KEY || "",
-          privacyPolicyUrl: privacyUrl?.href ?? "",
+          privacyPolicyUrl: privacyUrl.href,
         }
       : disabled,
   };
