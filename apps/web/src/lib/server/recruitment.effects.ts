@@ -45,7 +45,7 @@ async function authorizedWorkspace(slug: string): Promise<{
       yield* requireWorkspacePermission({ organization: ['update'] })
       const ctx = yield* WorkspaceContext
       const rawRole = ctx.actor?.role
-      const role = rawRole === 'owner' || rawRole === 'admin' ? rawRole : 'member'
+      const role: 'owner' | 'admin' | 'member' = rawRole === 'owner' || rawRole === 'admin' ? rawRole : 'member'
       return { workspaceId: ctx.workspace.id, role }
     }),
     { userId: session.user.id }
@@ -316,7 +316,7 @@ export async function saveRecruitmentApplicationSettingsHandler(input: {
 export async function loadRecruitmentApplicationHistoryHandler(input: {
   workspaceSlug: string
   applicationId: string
-}): Promise<import('./recruitment').Array<RecruitmentStageEvent>> {
+}): Promise<Array<import('./recruitment').RecruitmentStageEvent>> {
   const { workspaceId, db } = await authorizedWorkspace(input.workspaceSlug)
   const app = await db.prepare('SELECT id FROM recruitment_applications WHERE workspace_id=? AND id=? LIMIT 1')
     .bind(workspaceId, input.applicationId).first()
