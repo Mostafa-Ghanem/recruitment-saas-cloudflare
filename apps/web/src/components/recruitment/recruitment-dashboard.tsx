@@ -1083,14 +1083,13 @@ export function RecruitmentDashboard({
               onSubmit={(e) => {
                 e.preventDefault()
                 void act(
-                  () =>
-                    editingJobId
-                      ? editRecruitmentJobServerFn({
-                          data: { workspaceSlug, jobId: editingJobId, ...job }
-                        })
-                      : createRecruitmentJobServerFn({
-                          data: { workspaceSlug, ...job }
-                        }),
+                  async () => {
+                    if (editingJobId) {
+                      await editRecruitmentJobServerFn({ data: { workspaceSlug, jobId: editingJobId, ...job } })
+                    } else {
+                      await createRecruitmentJobServerFn({ data: { workspaceSlug, ...job } })
+                    }
+                  },
                   true
                 )
               }}
