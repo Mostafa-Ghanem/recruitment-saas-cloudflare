@@ -1,3 +1,6 @@
+import { Button } from '@/components/ui/button'
+import { Label } from '@/components/ui/label'
+import { Input } from '@/components/ui/input'
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { CheckCircle2Icon, ShieldCheckIcon, XIcon } from 'lucide-react'
 import { submitPublicApplicationServerFn } from '@/lib/server/public-application'
@@ -128,9 +131,9 @@ export function PublicApplicationForm({
       <p className="mt-2 text-xs text-muted-foreground">
         {ar ? 'لا يعني استلام الطلب قبولك في الوظيفة.' : 'Receiving an application does not guarantee selection.'}
       </p>
-      <button type="button" onClick={onClose} className="mt-4 rounded-xl border border-border px-5 py-2 text-sm">
+      <Button type="button" onClick={onClose} className="mt-4 rounded-xl border border-border px-5 py-2 text-sm">
         {ar ? 'تم' : 'Done'}
-      </button>
+      </Button>
     </section>
   )
 
@@ -141,32 +144,32 @@ export function PublicApplicationForm({
           <h4 className="text-lg font-semibold">{ar ? 'تقديم سريع' : 'Quick application'}</h4>
           <p className="mt-1 text-xs text-muted-foreground">{jobTitle}</p>
         </div>
-        <button type="button" onClick={onClose} disabled={busy} aria-label={ar ? 'إغلاق النموذج' : 'Close form'}
-          className="rounded-lg p-2 hover:bg-muted"><XIcon className="size-5" /></button>
+        <Button type="button" onClick={onClose} disabled={busy} aria-label={ar ? 'إغلاق النموذج' : 'Close form'}
+          className="rounded-lg p-2 hover:bg-muted"><XIcon className="size-5" /></Button>
       </div>
       <p className="mt-3 text-sm text-muted-foreground">
         {ar ? 'بدون إنشاء حساب. الاسم ووسيلة تواصل واحدة فقط.' : 'No account needed. Just your name and one way to reach you.'}
       </p>
       <form className="mt-5 space-y-4" onSubmit={e => { void submit(e) }}>
-        <label className="block">
+        <Label className="block">
           <span className="mb-1.5 block text-sm font-medium">{ar ? 'الاسم الكامل' : 'Full name'} *</span>
-          <input ref={nameInput} required autoComplete="name" name="name" minLength={2} maxLength={150}
+          <Input ref={nameInput} required autoComplete="name" name="name" minLength={2} maxLength={150}
             value={name} onChange={e => setName(e.target.value)}
             className="min-h-12 w-full rounded-xl border border-border bg-background px-4 outline-none focus-visible:ring-2 focus-visible:ring-primary"/>
-        </label>
+        </Label>
         <div className="grid gap-4 sm:grid-cols-2">
-          <label className="block">
+          <Label className="block">
             <span className="mb-1.5 block text-sm font-medium">{ar ? 'الجوال' : 'Mobile phone'}</span>
-            <input type="tel" name="phone" dir="ltr" autoComplete="tel" inputMode="tel" maxLength={40}
+            <Input type="tel" name="phone" dir="ltr" autoComplete="tel" inputMode="tel" maxLength={40}
               placeholder="+9665…" value={phone} onChange={e => setPhone(e.target.value)}
               className="min-h-12 w-full rounded-xl border border-border bg-background px-4 text-start outline-none focus-visible:ring-2 focus-visible:ring-primary"/>
-          </label>
-          <label className="block">
+          </Label>
+          <Label className="block">
             <span className="mb-1.5 block text-sm font-medium">{ar ? 'البريد الإلكتروني (اختياري)' : 'Email (optional)'}</span>
-            <input type="email" name="email" dir="ltr" autoComplete="email" maxLength={250}
+            <Input type="email" name="email" dir="ltr" autoComplete="email" maxLength={250}
               placeholder="you@example.com" value={email} onChange={e => setEmail(e.target.value)}
               className="min-h-12 w-full rounded-xl border border-border bg-background px-4 text-start outline-none focus-visible:ring-2 focus-visible:ring-primary"/>
-          </label>
+          </Label>
         </div>
         <p className="text-xs text-muted-foreground">
           {ar ? 'سيستخدم ' + company + ' بياناتك للنظر في طلبك والتواصل بشأن الوظيفة. اطّلع على ' :
@@ -180,10 +183,10 @@ export function PublicApplicationForm({
         {error && <p role="alert" className="rounded-lg border border-destructive/30 p-3 text-sm text-destructive">{error}</p>}
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <p className="flex items-center gap-1.5 text-xs text-muted-foreground"><ShieldCheckIcon className="size-4" />{ar ? 'بياناتك لا تظهر للعامة' : 'Your details are private'}</p>
-          <button type="submit" disabled={busy || !securityToken || !name.trim() || !(phone.trim() || email.trim())}
+          <Button type="submit" disabled={busy || !securityToken || !name.trim() || !(phone.trim() || email.trim())}
             className="min-h-12 rounded-xl bg-primary px-6 text-sm font-semibold text-primary-foreground disabled:opacity-50">
             {busy ? (ar ? 'جارٍ إرسال الطلب...' : 'Submitting...') : (ar ? 'إرسال طلب التوظيف' : 'Submit application')}
-          </button>
+          </Button>
         </div>
       </form>
     </section>
