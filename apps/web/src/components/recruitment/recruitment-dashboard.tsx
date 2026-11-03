@@ -276,7 +276,7 @@ export function RecruitmentDashboard({
             <Label className="relative w-full sm:w-72">
               <SearchIcon aria-hidden className="absolute top-3.5 start-3 size-4 text-muted-foreground"/>
               <span className="sr-only">{t.search}</span>
-              <Input className={field + ' ps-10'} value={search} onChange={e => setSearch(e.target.value)} placeholder={t.search} />
+              <Input name="recruitment-search" className={field + ' ps-10'} value={search} onChange={e => setSearch(e.target.value)} placeholder={t.search} />
             </Label>
           </div>
           {tab === 'jobs' ? (
@@ -363,7 +363,7 @@ export function RecruitmentDashboard({
                       </div>
                       <div className="flex w-full items-center gap-2 sm:w-auto">
                         <Label className="text-xs text-muted-foreground" htmlFor={'stage-' + app.id}>{t.stage}</Label>
-                        <select dir={lang === 'ar' ? 'rtl' : 'ltr'} id={'stage-' + app.id} disabled={busy} value={app.stage}
+                        <select name="application-stage" dir={lang === 'ar' ? 'rtl' : 'ltr'} id={'stage-' + app.id} disabled={busy} value={app.stage}
                           className={field + ' min-w-44 flex-1 sm:flex-none'} onChange={e => void act(() => moveRecruitmentApplicationServerFn({data: {workspaceSlug, applicationId: app.id, stage: e.target.value}}))}>
                           {stages.map(stage => <option value={stage} key={stage}>{t[stage]}</option>)}
                         </select>
@@ -412,13 +412,13 @@ export function RecruitmentDashboard({
           }}>
             <Label className="block">
               <span className={fieldLabel}>{t.privacyUrlLabel}</span>
-              <Input className={field} type="url" required={acceptApplications}
+              <Input name="privacy-policy-url" className={field} type="url" required={acceptApplications}
                 pattern="https://.*" autoComplete="url" maxLength={1000}
                 placeholder="https://company.example/privacy"
                 value={privacyUrl} onChange={e => setPrivacyUrl(e.target.value)} />
             </Label>
             <Label className="flex items-start gap-3 text-sm">
-              <Input type="checkbox" className="mt-1 size-4 accent-primary"
+              <Input name="accept-applications" type="checkbox" className="mt-1 size-4 accent-primary"
                 checked={acceptApplications}
                 onChange={e => setAcceptApplications(e.target.checked)} />
               <span>{t.privacyEnable}</span>
@@ -449,22 +449,22 @@ export function RecruitmentDashboard({
             {error && <p role="alert" className="mb-4 rounded-lg border border-destructive/40 p-3 text-sm text-destructive">{error}</p>}
             {dialog === 'job' ? (
               <form className="space-y-4" onSubmit={e => { e.preventDefault(); void act(() => editingJobId ? editRecruitmentJobServerFn({data: {workspaceSlug, jobId: editingJobId, ...job}}) : createRecruitmentJobServerFn({data: {workspaceSlug, ...job}}), true) }}>
-                <Label className="block"><span className={fieldLabel}>{t.jobTitle} *</span><Input autoFocus required minLength={3} maxLength={150} className={field} value={job.title} onChange={e => setJob({...job, title: e.target.value})} placeholder={lang==='ar'?'مثال: أخصائي مبيعات عقارية':'e.g. Real Estate Sales Specialist'}/></Label>
+                <Label className="block"><span className={fieldLabel}>{t.jobTitle} *</span><Input name="job-title" autoFocus required minLength={3} maxLength={150} className={field} value={job.title} onChange={e => setJob({...job, title: e.target.value})} placeholder={lang==='ar'?'مثال: أخصائي مبيعات عقارية':'e.g. Real Estate Sales Specialist'}/></Label>
                 <div className="grid gap-4 sm:grid-cols-2">
-                  <Label className="block"><span className={fieldLabel}>{t.department}</span><Input maxLength={100} className={field} value={job.department} onChange={e=>setJob({...job,department:e.target.value})}/></Label>
-                  <Label className="block"><span className={fieldLabel}>{t.location}</span><Input maxLength={100} className={field} value={job.location} onChange={e=>setJob({...job,location:e.target.value})} placeholder={lang==='ar'?'جدة، السعودية':'Jeddah, Saudi Arabia'}/></Label>
+                  <Label className="block"><span className={fieldLabel}>{t.department}</span><Input name="job-department" maxLength={100} className={field} value={job.department} onChange={e=>setJob({...job,department:e.target.value})}/></Label>
+                  <Label className="block"><span className={fieldLabel}>{t.location}</span><Input name="job-location" maxLength={100} className={field} value={job.location} onChange={e=>setJob({...job,location:e.target.value})} placeholder={lang==='ar'?'جدة، السعودية':'Jeddah, Saudi Arabia'}/></Label>
                 </div>
-                <Label className="block"><span className={fieldLabel}>{t.employment}</span><select className={field} value={job.employmentType} onChange={e=>setJob({...job,employmentType:e.target.value})}><option value="full_time">{t.fullTime}</option><option value="part_time">{t.partTime}</option><option value="contract">{t.contract}</option><option value="internship">{t.internship}</option></select></Label>
-                <Label className="block"><span className={fieldLabel}>{t.description}</span><Textarea maxLength={10000} rows={4} className={field + ' resize-y py-3'} value={job.description} onChange={e=>setJob({...job,description:e.target.value})}/></Label>
+                <Label className="block"><span className={fieldLabel}>{t.employment}</span><select name="employment-type" className={field} value={job.employmentType} onChange={e=>setJob({...job,employmentType:e.target.value})}><option value="full_time">{t.fullTime}</option><option value="part_time">{t.partTime}</option><option value="contract">{t.contract}</option><option value="internship">{t.internship}</option></select></Label>
+                <Label className="block"><span className={fieldLabel}>{t.description}</span><Textarea name="job-description" maxLength={10000} rows={4} className={field + ' resize-y py-3'} value={job.description} onChange={e=>setJob({...job,description:e.target.value})}/></Label>
                 <div className="flex justify-end gap-2 pt-3"><Button type="button" className={pill} disabled={busy} onClick={()=>setDialog(null)}>{t.cancel}</Button><Button type="submit" className={primary} disabled={busy || !job.title.trim()}>{editingJobId ? t.saveChanges : t.saveJob} <ArrowUpRightIcon className="size-4"/></Button></div>
               </form>
             ) : (
               <form className="space-y-4" onSubmit={e => { e.preventDefault(); void act(() => addRecruitmentCandidateServerFn({data:{workspaceSlug,...candidate}}),true) }}>
-                <Label className="block"><span className={fieldLabel}>{t.name} *</span><Input required minLength={2} maxLength={150} autoFocus className={field} value={candidate.fullName} onChange={e=>setCandidate({...candidate,fullName:e.target.value})}/></Label>
-                <Label className="block"><span className={fieldLabel}>{t.job} *</span><select required className={field} value={candidate.jobId} onChange={e=>setCandidate({...candidate,jobId:e.target.value})}><option value="">{t.chooseJob}</option>{data.jobs.map(item=><option value={item.id} key={item.id}>{item.title}</option>)}</select></Label>
+                <Label className="block"><span className={fieldLabel}>{t.name} *</span><Input name="candidate-name" required minLength={2} maxLength={150} autoFocus className={field} value={candidate.fullName} onChange={e=>setCandidate({...candidate,fullName:e.target.value})}/></Label>
+                <Label className="block"><span className={fieldLabel}>{t.job} *</span><select name="candidate-job" required className={field} value={candidate.jobId} onChange={e=>setCandidate({...candidate,jobId:e.target.value})}><option value="">{t.chooseJob}</option>{data.jobs.map(item=><option value={item.id} key={item.id}>{item.title}</option>)}</select></Label>
                 <div className="grid gap-4 sm:grid-cols-2">
-                  <Label className="block"><span className={fieldLabel}>{t.phone}</span><Input type="tel" dir="ltr" maxLength={40} className={field} value={candidate.phone} onChange={e=>setCandidate({...candidate,phone:e.target.value})} placeholder="+966 5..."/></Label>
-                  <Label className="block"><span className={fieldLabel}>{t.email}</span><Input type="email" dir="ltr" maxLength={250} className={field} value={candidate.email} onChange={e=>setCandidate({...candidate,email:e.target.value})} placeholder="name@example.com"/></Label>
+                  <Label className="block"><span className={fieldLabel}>{t.phone}</span><Input name="candidate-phone" type="tel" dir="ltr" maxLength={40} className={field} value={candidate.phone} onChange={e=>setCandidate({...candidate,phone:e.target.value})} placeholder="+966 5..."/></Label>
+                  <Label className="block"><span className={fieldLabel}>{t.email}</span><Input name="candidate-email" type="email" dir="ltr" maxLength={250} className={field} value={candidate.email} onChange={e=>setCandidate({...candidate,email:e.target.value})} placeholder="name@example.com"/></Label>
                 </div>
                 <div className="flex justify-end gap-2 pt-3"><Button type="button" className={pill} disabled={busy} onClick={()=>setDialog(null)}>{t.cancel}</Button><Button type="submit" className={primary} disabled={busy || !candidate.fullName.trim() || !candidate.jobId || !(candidate.phone.trim() || candidate.email.trim())}>{t.saveCandidate} <ArrowUpRightIcon className="size-4"/></Button></div>
               </form>
