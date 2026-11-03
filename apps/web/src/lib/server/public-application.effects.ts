@@ -47,8 +47,8 @@ async function verifyTurnstile(token: string, secret: string, request: Request):
     }
     answer = {
       success: parsed.success === true,
-      action: 'action' in parsed && typeof parsed.action === 'string' ? parsed.action : undefined,
-      hostname: 'hostname' in parsed && typeof parsed.hostname === 'string' ? parsed.hostname : undefined
+      ...('action' in parsed && typeof parsed.action === 'string' ? { action: parsed.action } : {}),
+      ...('hostname' in parsed && typeof parsed.hostname === 'string' ? { hostname: parsed.hostname } : {})
     }
   } catch {
     throw new Error('Security check unavailable. Please try again')
