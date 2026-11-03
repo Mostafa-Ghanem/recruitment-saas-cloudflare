@@ -1013,5 +1013,52 @@ const WorkspacesRouteWithChildren = WorkspacesRoute._addFileChildren(
 
 interface DotwellKnownOauthAuthorizationServerRouteChildren {
   DotwellKnownOauthAuthorizationServerSplatRoute: typeof DotwellKnownOauthAuthorizationServerSplatRoute
-... (output truncated, full output saved to: /mnt/files/.composio/output/bash_blew_stdout.txt)
-Run 'cat /mnt/files/.composio/output/bash_blew_stdout.txt' to view the full output, or use 'head -n 100 /mnt/files/.composio/output/bash_blew_stdout.txt' / 'tail -n 100 /mnt/files/.composio/output/bash_blew_stdout.txt' to view parts of it.
+}
+
+const DotwellKnownOauthAuthorizationServerRouteChildren: DotwellKnownOauthAuthorizationServerRouteChildren =
+  {
+    DotwellKnownOauthAuthorizationServerSplatRoute:
+      DotwellKnownOauthAuthorizationServerSplatRoute,
+  }
+
+const DotwellKnownOauthAuthorizationServerRouteWithChildren =
+  DotwellKnownOauthAuthorizationServerRoute._addFileChildren(
+    DotwellKnownOauthAuthorizationServerRouteChildren,
+  )
+
+const rootRouteChildren: RootRouteChildren = {
+  IndexRoute: IndexRoute,
+  KnowledgeRoute: KnowledgeRouteWithChildren,
+  AccountRoute: AccountRoute,
+  AdminRoute: AdminRoute,
+  DemoRoute: DemoRoute,
+  ForgotPasswordRoute: ForgotPasswordRoute,
+  PricingRoute: PricingRoute,
+  PrivacyRoute: PrivacyRoute,
+  PurchaseRoute: PurchaseRoute,
+  ResetPasswordRoute: ResetPasswordRoute,
+  SignInRoute: SignInRoute,
+  SignUpRoute: SignUpRoute,
+  TermsRoute: TermsRoute,
+  TwoFactorRoute: TwoFactorRoute,
+  VerifyAuthenticationRoute: VerifyAuthenticationRoute,
+  VerifyEmailRoute: VerifyEmailRoute,
+  WorkspacesRoute: WorkspacesRouteWithChildren,
+  DotwellKnownOauthAuthorizationServerRoute:
+    DotwellKnownOauthAuthorizationServerRouteWithChildren,
+  AccountNotificationsRoute: AccountNotificationsRoute,
+  ApiSupportConfigRoute: ApiSupportConfigRoute,
+  CareersWorkspaceSlugRoute: CareersWorkspaceSlugRoute,
+  DemoSectionRoute: DemoSectionRoute,
+  InvitationsAcceptRoute: InvitationsAcceptRoute,
+  MagicLinkVerifyRoute: MagicLinkVerifyRoute,
+  OauthConsentRoute: OauthConsentRoute,
+  SignInEmailCodeRoute: SignInEmailCodeRoute,
+  HelpIndexRoute: HelpIndexRoute,
+  ApiAuthSplatRoute: ApiAuthSplatRoute,
+  ApiAssistantConversationIdConnectRoute:
+    ApiAssistantConversationIdConnectRoute,
+}
+export const routeTree = rootRouteImport
+  ._addFileChildren(rootRouteChildren)
+  ._addFileTypes<FileRouteTypes>()
