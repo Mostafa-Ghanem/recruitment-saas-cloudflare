@@ -199,11 +199,11 @@ export function RecruitmentDashboard({
     setDialog('job')
   }
 
-  const stageLabels = {
+  const stageLabels = new Map<string, string>(Object.entries({
     new: t.new, screening: t.screening, shortlisted: t.shortlisted,
     interview: t.interview, offer: t.offer, hired: t.hired,
     rejected: t.rejected, withdrawn: t.withdrawn
-  }
+  }))
 
   const summary = [
     { label: t.jobs, count: data.counts.jobs, icon: BriefcaseBusinessIcon },
@@ -386,7 +386,7 @@ export function RecruitmentDashboard({
                               (historyItems[app.id]?.length ? historyItems[app.id]?.map(event => (
                                 <div key={event.id} className="flex flex-wrap items-center justify-between gap-2 border-b border-border/50 py-2 last:border-0">
                                   <span className="font-medium">
-                                    {stageLabels[event.to_stage] ?? event.to_stage}
+                                    {stageLabels.get(event.to_stage) ?? event.to_stage}
                                   </span>
                                   <span className="text-muted-foreground">
                                     {event.changed_by_team ? (lang === 'ar' ? 'فريق التوظيف' : 'Recruitment team') :
