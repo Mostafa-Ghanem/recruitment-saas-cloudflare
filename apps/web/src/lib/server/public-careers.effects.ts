@@ -27,12 +27,9 @@ export async function loadPublicCareersHandler(input: {
   const settings = await env.DB.prepare(`SELECT accept_applications,privacy_policy_url
     FROM recruitment_application_settings WHERE workspace_id=? LIMIT 1`)
     .bind(workspace.id).first<{ accept_applications: number; privacy_policy_url: string }>()
-  let validPrivacy = false
-  try {
-    const url = new URL(settings?.privacy_policy_url || '')
-    validPrivacy = url.protocol === 'https:' && !url.username && !url.password &&
-      !url.hash && url.hostname.length > 3
-  } catch { validPrivacy = false }
+  const privacyUrl = URL.parse(settings?.privacy_policy_url ?? '')
+  const validPrivacy = privacyUrl?.protocol === 'https:' && !privacyUrl.username &&
+    !privacyUrl.password && !privacyUrl.hash && privacyUrl.hostname.length > 3
   const enabled = env.RECRUITMENT_PUBLIC_APPLY_ENABLED === 'true' &&
     Boolean(env.TURNSTILE_SECRET_KEY && env.TURNSTILE_SITE_KEY) &&
     settings?.accept_applications === 1 && validPrivacy
