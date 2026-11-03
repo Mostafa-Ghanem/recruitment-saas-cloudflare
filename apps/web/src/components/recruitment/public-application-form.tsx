@@ -6,6 +6,14 @@ import { TurnstileWidget } from "@/components/auth/turnstile-widget";
 import { CheckCircle2Icon, ShieldCheckIcon, XIcon } from "lucide-react";
 import { submitPublicApplicationServerFn } from "@/lib/server/public-application";
 
+const submitLabels = {
+  ar: { sending: "جارٍ إرسال الطلب…", ready: "إرسال طلب التوظيف" },
+  en: { sending: "Submitting…", ready: "Submit application" },
+};
+const confirmationTitles = {
+  ar: { duplicate: "طلبك موجود بالفعل", success: "تم استلام طلبك بنجاح" },
+  en: { duplicate: "Your application already exists", success: "Application received" },
+};
 export function PublicApplicationForm({
   workspaceSlug,
   jobId,
@@ -39,14 +47,7 @@ export function PublicApplicationForm({
   const submissionKey = useRef<string | null>(null);
 
   const language = ar ? "ar" : "en";
-  const submitLabels = {
-    ar: { sending: "جارٍ إرسال الطلب…", ready: "إرسال طلب التوظيف" },
-    en: { sending: "Submitting…", ready: "Submit application" },
-  };
-  const confirmationTitles = {
-    ar: { duplicate: "طلبك موجود بالفعل", success: "تم استلام طلبك بنجاح" },
-    en: { duplicate: "Your application already exists", success: "Application received" },
-  };
+  const verificationError = ar ? 'أعد إكمال التحقق الأمني.' : 'Please complete the security check again.';
   async function submit(event: SyntheticEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!securityToken) {
@@ -231,13 +232,7 @@ export function PublicApplicationForm({
           action="recruitment_apply"
           onToken={(token) => {
             setSecurityToken(token ?? "");
-            setSecurityError(
-              token
-                ? ""
-                : ar
-                  ? "أعد إكمال التحقق الأمني."
-                  : "Please complete the security check again.",
-            );
+            setSecurityError(token ? '' : verificationError);
           }}
           resetKey={turnstileResetKey}
         />
