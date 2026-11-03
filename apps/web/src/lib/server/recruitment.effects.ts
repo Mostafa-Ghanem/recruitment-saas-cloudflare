@@ -8,7 +8,8 @@ import { requireWorkspacePermission } from './authorize'
 import type {
   RecruitmentApplication,
   RecruitmentJob,
-  RecruitmentOverview
+  RecruitmentOverview,
+  RecruitmentStageEvent
 } from './recruitment'
 
 /**
@@ -61,19 +62,29 @@ export async function loadRecruitmentHandler(input: {
 }): Promise<RecruitmentOverview> {
   const { workspaceId, role, db } = await authorizedWorkspace(input.workspaceSlug)
   const staleBefore = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString()
-  const [jobResult, applicationResult, countResult, settingsResult] = await db.batch([
+  type CountRow = {
+    jobs_count: number
+    published_count: number
+    applications_count: number
+    interviewing_count: number
+    new_count: number
+    stale_count: number
+  }
+  const [jobResult, applicationResult, countRow, settingsRow] = await Promise.all([
     db.prepare(`SELECT j.id,j.title,j.department,j.location,j.employment_type,j.description,
       j.status,j.created_at,j.updated_at,
       (SELECT COUNT(*) FROM recruitment_applications a
         WHERE a.workspace_id=j.workspace_id AND a.job_id=j.id) AS application_count
       FROM recruitment_jobs j WHERE j.workspace_id=?
-      ORDER BY j.created_at DESC,j.id DESC LIMIT 150`).bind(workspaceId),
+      ORDER BY j.created_at DESC,j.id DESC LIMIT 150`).bind(workspaceId)
+      .all<RecruitmentJob>(),
     db.prepare(`SELECT a.id,a.candidate_id,c.full_name,c.email,c.phone,
       a.job_id,j.title AS job_title,a.stage,a.created_at
       FROM recruitment_applications a
       JOIN recruitment_candidates c ON c.id=a.candidate_id AND c.workspace_id=a.workspace_id
       JOIN recruitment_jobs j ON j.id=a.job_id AND j.workspace_id=a.workspace_id
-      WHERE a.workspace_id=? ORDER BY a.created_at DESC,a.id DESC LIMIT 250`).bind(workspaceId),
+      WHERE a.workspace_id=? ORDER BY a.created_at DESC,a.id DESC LIMIT 250`)
+      .bind(workspaceId).all<RecruitmentApplication>(),
     db.prepare(`SELECT
       (SELECT COUNT(*) FROM recruitment_jobs WHERE workspace_id=?) AS jobs_count,
       (SELECT COUNT(*) FROM recruitment_jobs WHERE workspace_id=? AND status='published') AS published_count,
@@ -81,24 +92,19 @@ export async function loadRecruitmentHandler(input: {
       (SELECT COUNT(*) FROM recruitment_applications WHERE workspace_id=? AND stage='interview') AS interviewing_count,
       (SELECT COUNT(*) FROM recruitment_applications WHERE workspace_id=? AND stage='new') AS new_count,
       (SELECT COUNT(*) FROM recruitment_applications WHERE workspace_id=? AND stage='new' AND created_at < ?) AS stale_count
-    `).bind(workspaceId, workspaceId, workspaceId, workspaceId, workspaceId, workspaceId, staleBefore),
+    `).bind(workspaceId, workspaceId, workspaceId, workspaceId, workspaceId, workspaceId, staleBefore)
+      .first<CountRow>(),
     db.prepare(`SELECT accept_applications,privacy_policy_url
-      FROM recruitment_application_settings WHERE workspace_id=?`).bind(workspaceId)
+      FROM recruitment_application_settings WHERE workspace_id=?`)
+      .bind(workspaceId).first<{ accept_applications: number; privacy_policy_url: string }>()
   ])
-  if (!jobResult || !applicationResult || !countResult || !settingsResult) {
-    throw new Error('Recruitment data could not be loaded')
-  }
-  const settingsRow = settingsResult.results[0] as
-    | { accept_applications?: number; privacy_policy_url?: string }
-    | undefined
-  const countRow = countResult.results[0] as Record<string, unknown> | undefined
-  const jobs = jobResult.results as Array<RecruitmentJob>
-  const applications = applicationResult.results as Array<RecruitmentApplication>
+  const jobs = jobResult.results
+  const applications = applicationResult.results
   return {
     jobs, applications, viewer: { role },
     settings: {
       acceptApplications: settingsRow?.accept_applications === 1,
-      privacyPolicyUrl: String(settingsRow?.privacy_policy_url ?? ''),
+      privacyPolicyUrl: settingsRow?.privacy_policy_url ?? '',
       runtimeConfigured: env.RECRUITMENT_PUBLIC_APPLY_ENABLED === 'true' &&
         Boolean(env.TURNSTILE_SITE_KEY && env.TURNSTILE_SECRET_KEY)
     },
@@ -316,7 +322,7 @@ export async function saveRecruitmentApplicationSettingsHandler(input: {
 export async function loadRecruitmentApplicationHistoryHandler(input: {
   workspaceSlug: string
   applicationId: string
-}): Promise<Array<import('./recruitment').RecruitmentStageEvent>> {
+}): Promise<Array<RecruitmentStageEvent>> {
   const { workspaceId, db } = await authorizedWorkspace(input.workspaceSlug)
   const app = await db.prepare('SELECT id FROM recruitment_applications WHERE workspace_id=? AND id=? LIMIT 1')
     .bind(workspaceId, input.applicationId).first()
@@ -326,6 +332,6 @@ export async function loadRecruitmentApplicationHistoryHandler(input: {
     FROM recruitment_stage_history
     WHERE workspace_id=? AND application_id=?
     ORDER BY created_at DESC,id DESC LIMIT 100`)
-    .bind(workspaceId,input.applicationId).all<import('./recruitment').RecruitmentStageEvent>()
+    .bind(workspaceId,input.applicationId).all<RecruitmentStageEvent>()
   return result.results
 }
