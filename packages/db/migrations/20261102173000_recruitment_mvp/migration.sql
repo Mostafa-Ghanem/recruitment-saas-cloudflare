@@ -12,9 +12,11 @@ CREATE TABLE recruitment_jobs (
   updated_at TEXT NOT NULL,
   UNIQUE(workspace_id,id)
 );
+--> statement-breakpoint
 CREATE INDEX recruitment_jobs_workspace_created_idx ON recruitment_jobs(workspace_id,created_at);
+--> statement-breakpoint
 CREATE INDEX recruitment_jobs_workspace_status_idx ON recruitment_jobs(workspace_id,status);
-
+--> statement-breakpoint
 CREATE TABLE recruitment_candidates (
   id TEXT PRIMARY KEY NOT NULL,
   workspace_id TEXT NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
@@ -24,8 +26,9 @@ CREATE TABLE recruitment_candidates (
   created_at TEXT NOT NULL,
   UNIQUE(workspace_id,id)
 );
+--> statement-breakpoint
 CREATE INDEX recruitment_candidates_workspace_created_idx ON recruitment_candidates(workspace_id,created_at);
-
+--> statement-breakpoint
 CREATE TABLE recruitment_applications (
   id TEXT PRIMARY KEY NOT NULL,
   workspace_id TEXT NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
@@ -38,7 +41,11 @@ CREATE TABLE recruitment_applications (
   FOREIGN KEY(workspace_id,job_id) REFERENCES recruitment_jobs(workspace_id,id) ON DELETE CASCADE,
   FOREIGN KEY(workspace_id,candidate_id) REFERENCES recruitment_candidates(workspace_id,id) ON DELETE CASCADE
 );
+--> statement-breakpoint
 CREATE INDEX recruitment_applications_workspace_stage_idx ON recruitment_applications(workspace_id,stage);
+--> statement-breakpoint
 CREATE INDEX recruitment_applications_workspace_created_idx ON recruitment_applications(workspace_id,created_at);
+--> statement-breakpoint
 CREATE INDEX recruitment_applications_workspace_job_idx ON recruitment_applications(workspace_id,job_id);
+--> statement-breakpoint
 CREATE INDEX recruitment_applications_workspace_candidate_idx ON recruitment_applications(workspace_id,candidate_id);
