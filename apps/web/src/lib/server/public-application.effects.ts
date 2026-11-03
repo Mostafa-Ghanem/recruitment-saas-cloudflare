@@ -3,6 +3,11 @@ import { env } from "cloudflare:workers";
 import { currentRequest } from "../request-context";
 import { type PublicApplyInput, type PublicApplyResult } from "./public-application";
 
+const TurnstilePayload = Schema.Struct({
+  success: Schema.Boolean,
+  action: Schema.optional(Schema.String),
+  hostname: Schema.optional(Schema.String),
+});
 const ACTION = "recruitment_apply";
 const RATE_LIMIT = 10;
 const HOUR_SECONDS = 3600;
@@ -36,28 +41,18 @@ async function verifyTurnstile(token: string, secret: string, request: Request):
   if (ip) {
     body.set("remoteip", ip);
   }
-  let answer: { success?: boolean; hostname?: string; action?: string };
+  let answer: typeof TurnstilePayload.Type;
   try {
     const response = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body,
-      signal: AbortSignal.timeout(10000),
+      signal: AbortSignal.timeout(10_000),
     });
     if (!response.ok) {
       throw new Error("Turnstile unavailable");
     }
-    const parsed: unknown = await response.json();
-    if (!parsed || typeof parsed !== "object" || !("success" in parsed)) {
-      throw new Error("Invalid Turnstile response");
-    }
-    answer = {
-      success: parsed.success === true,
-      ...("action" in parsed && typeof parsed.action === "string" ? { action: parsed.action } : {}),
-      ...("hostname" in parsed && typeof parsed.hostname === "string"
-        ? { hostname: parsed.hostname }
-        : {}),
-    };
+    answer = Schema.decodeUnknownSync(TurnstilePayload)(await response.json());
   } catch {
     throw new Error("Security check unavailable. Please try again");
   }
@@ -196,14 +191,14 @@ export async function submitPublicApplicationHandler(
     (value) => trim(value, 120, "campaign source"),
   );
   const statements: Array<ReturnType<typeof db.prepare>> = [
-    ...(!existing
-      ? [
+    ...(existing
+      ? []
+      : [
           db
             .prepare(`INSERT INTO recruitment_candidates
         (id,workspace_id,full_name,email,phone,created_at) VALUES (?,?,?,?,?,?)`)
             .bind(candidateId, job.workspace_id, fullName, email, phone, now),
-        ]
-      : []),
+        ]),
     db
       .prepare(`INSERT INTO recruitment_applications
       (id,workspace_id,job_id,candidate_id,stage,submission_key,
