@@ -11,6 +11,13 @@ name: Preview
 on:
   pull_request:
     types: [opened, synchronize, reopened, closed]
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 'Existing preview PR number (run from develop/recruitment-saas)'
+        required: true
+        type: number
+        default: 1
 
 # Preview-environment secrets are exposed to this workflow, so it must never run
 # PR code from a fork: every job checks `head.repo.full_name == github.repository`.
@@ -20,24 +27,29 @@ permissions:
   deployments: write
 
 concurrency:
-  group: preview-${{ github.event.pull_request.number }}
+  group: preview-${{ github.event.pull_request.number || inputs.pr_number }}
   # A newer push cancels the in-flight deploy of the same PR; a close never
   # gets cancelled, so the stage is always torn down.
   cancel-in-progress: ${{ github.event.action != 'closed' }}
 
 env:
-  ALCHEMY_STAGE: pr-${{ github.event.pull_request.number }}
-  GIT_COMMIT_SHA: ${{ github.event.pull_request.head.sha }}
-  SERVICE_VERSION: pr-${{ github.event.pull_request.number }}
+  ALCHEMY_STAGE: pr-${{ github.event.pull_request.number || inputs.pr_number }}
+  GIT_COMMIT_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+  SERVICE_VERSION: pr-${{ github.event.pull_request.number || inputs.pr_number }}
 
 jobs:
   deploy:
     name: Deploy preview stage
     if: >-
       vars.PREVIEW_ENABLED == 'true' &&
-      github.event.action != 'closed' &&
-      github.event.pull_request.head.repo.full_name == github.repository &&
-      github.actor != 'dependabot[bot]'
+      (
+        (github.event_name == 'workflow_dispatch' &&
+          github.ref == 'refs/heads/develop/recruitment-saas') ||
+        (github.event_name == 'pull_request' &&
+          github.event.action != 'closed' &&
+          github.event.pull_request.head.repo.full_name == github.repository &&
+          github.actor != 'dependabot[bot]')
+      )
     runs-on: ubuntu-latest
     environment: preview
     env:
@@ -63,7 +75,7 @@ jobs:
           fi
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
-          ref: ${{ github.event.pull_request.head.sha }}
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
       - uses: ./.github/actions/setup
       - name: Resolve preview URLs
@@ -92,9 +104,24 @@ jobs:
           if-no-files-found: error
           retention-days: 14
       - name: Report the deployment
+        if: ${{ github.event_name == 'pull_request' }}
         env:
           GH_TOKEN: ${{ github.token }}
         run: node .github/scripts/preview-status.ts deployed
+
+      - name: Display manual preview URLs
+        if: ${{ github.event_name == 'workflow_dispatch' }}
+        shell: bash
+        run: |
+          {
+            echo "### HireFlow preview \`$ALCHEMY_STAGE\`"
+            echo ""
+            echo "Web: $WEB_URL"
+            echo "API: $API_URL/health"
+            echo "Background: $BACKGROUND_URL"
+            echo ""
+            echo "Synthetic data only. Public applications remain disabled."
+          } >> "$GITHUB_STEP_SUMMARY"
 
   destroy:
     name: Destroy preview stage
