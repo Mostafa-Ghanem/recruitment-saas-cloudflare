@@ -249,6 +249,7 @@ const historyDateEn = new Intl.DateTimeFormat("en", {
   timeZone: "UTC",
 });
 
+// oxlint-disable-next-line react-doctor/no-giant-component -- P0 coordinator: split job, candidate and settings panels into separate modules before general availability.
 export function RecruitmentDashboard({
   workspaceSlug,
   data,
