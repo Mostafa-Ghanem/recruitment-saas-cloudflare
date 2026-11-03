@@ -34,7 +34,7 @@ function clean(value: string, max: number): string {
 
 async function authorizedWorkspace(slug: string): Promise<{
   workspaceId: string
-  role: string
+  role: 'owner' | 'admin' | 'member'
   db: D1Database
   actorUserId: string
 }> {
@@ -44,7 +44,7 @@ async function authorizedWorkspace(slug: string): Promise<{
     Effect.gen(function* () {
       yield* requireWorkspacePermission({ organization: ['update'] })
       const ctx = yield* WorkspaceContext
-      return { workspaceId: ctx.workspace.id, role: ctx.actor?.role ?? 'member' }
+      return { workspaceId: ctx.workspace.id, role: ctx.actor?.role === 'owner' ? 'owner' : ctx.actor?.role === 'admin' ? 'admin' : 'member' }
     }),
     { userId: session.user.id }
   )
