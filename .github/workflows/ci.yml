@@ -27,6 +27,8 @@ jobs:
       - uses: ./.github/actions/setup
         with:
           cache-task: true
+      - name: Verify HireFlow D1 migrations, tenant isolation and idempotency
+        run: node tools/recruitment-db-smoke.mjs
       - run: vp run typecheck
       - run: vp run lint
       - name: Public agent exports are up to date
