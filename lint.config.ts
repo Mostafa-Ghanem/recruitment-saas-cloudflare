@@ -500,6 +500,9 @@ const { lint = {} } = defineConfig({
       'dist/**',
       '.output/**',
       'apps/web/src/routeTree.gen.ts',
+      // Legacy standalone static UX prototype is not part of the typed SaaS app.
+      // Its own Node syntax check remains in recruitment smoke verification.
+      'preview/worker.js',
       'packages/i18n/src/generated/**',
       'packages/i18n/.generated/**'
     ],
