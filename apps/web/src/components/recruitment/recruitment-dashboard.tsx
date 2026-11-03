@@ -476,7 +476,7 @@ function EmptyState({ title, description, icon: Icon, action }: {
   title: string
   description: string
   icon: typeof BriefcaseBusinessIcon
-  action?: { label: string; onClick: () => void }
+  action?: { label: string; onClick: () => void } | undefined
 }) {
   return (
     <div className="flex min-h-60 flex-col items-center justify-center gap-3 px-4 text-center">
