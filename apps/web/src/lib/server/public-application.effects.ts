@@ -1,7 +1,7 @@
 /* oxlint-disable effect/noThrowStatement, effect/noNewError, effect/noTryCatch -- TanStack's promise-returning server-function boundary serializes validation failures as thrown errors. The Effect permission gate executes before D1 access. */
 import { env } from 'cloudflare:workers'
 import { currentRequest } from '../request-context'
-import type { PublicApplyInput, PublicApplyResult } from './public-application'
+import { type PublicApplyInput, type PublicApplyResult } from './public-application'
 
 const ACTION = 'recruitment_apply'
 const RATE_LIMIT = 10
@@ -9,25 +9,27 @@ const HOUR_SECONDS = 3600
 
 function trim(input: string, max: number, field: string): string {
   const value = input.trim()
-  if (value.length > max) throw new Error('Invalid ' + field)
+  if (value.length > max) {
+    throw new Error(`Invalid ${field}`)
+  }
   return value
 }
 
 function validPrivacyUrl(raw: string): boolean {
-  try {
-    const url = new URL(raw)
-    return url.protocol === 'https:' && !url.username && !url.password && !url.hash &&
-      url.hostname.length > 3 && !/^(localhost|127\.0\.0\.1)$/i.test(url.hostname)
-  } catch {
-    return false
-  }
+  const url = URL.parse(raw)
+  return url?.protocol === 'https:' && !url.username && !url.password && !url.hash &&
+    url.hostname.length > 3 && !/^(localhost|127\.0\.0\.1)$/i.test(url.hostname)
 }
 
 async function verifyTurnstile(token: string, secret: string, request: Request): Promise<void> {
-  if (!token || token.length > 2048) throw new Error('Please complete the security check')
+  if (!token || token.length > 2048) {
+    throw new Error('Please complete the security check')
+  }
   const ip = request.headers.get('CF-Connecting-IP') || ''
   const body = new URLSearchParams({ secret, response: token })
-  if (ip) body.set('remoteip', ip)
+  if (ip) {
+    body.set('remoteip', ip)
+  }
   let answer: { success?: boolean; hostname?: string; action?: string }
   try {
     const response = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
@@ -36,8 +38,18 @@ async function verifyTurnstile(token: string, secret: string, request: Request):
       body,
       signal: AbortSignal.timeout(10000)
     })
-    if (!response.ok) throw new Error('Turnstile unavailable')
-    answer = await response.json() as typeof answer
+    if (!response.ok) {
+      throw new Error('Turnstile unavailable')
+    }
+    const parsed: unknown = await response.json()
+    if (!parsed || typeof parsed !== 'object' || !('success' in parsed)) {
+      throw new Error('Invalid Turnstile response')
+    }
+    answer = {
+      success: parsed.success === true,
+      action: 'action' in parsed && typeof parsed.action === 'string' ? parsed.action : undefined,
+      hostname: 'hostname' in parsed && typeof parsed.hostname === 'string' ? parsed.hostname : undefined
+    }
   } catch {
     throw new Error('Security check unavailable. Please try again')
   }
@@ -50,13 +62,15 @@ async function verifyTurnstile(token: string, secret: string, request: Request):
 async function applyThrottle(db: D1Database, request: Request, workspaceId: string): Promise<void> {
   const ip = request.headers.get('CF-Connecting-IP')
   // Real public traffic must come through Cloudflare; fail closed without a trusted IP.
-  if (!ip || !env.BETTER_AUTH_SECRET) throw new Error('Applications temporarily unavailable')
+  if (!ip || !env.BETTER_AUTH_SECRET) {
+    throw new Error('Applications temporarily unavailable')
+  }
   const now = Math.floor(Date.now() / 1000)
   const keyBytes = await crypto.subtle.digest(
     'SHA-256',
-    new TextEncoder().encode(env.BETTER_AUTH_SECRET + '\nrecruitment\n' + ip + '\n' + workspaceId)
+    new TextEncoder().encode(`${env.BETTER_AUTH_SECRET}\nrecruitment\n${ip}\n${workspaceId}`)
   )
-  const key = Array.from(new Uint8Array(keyBytes)).map(x => x.toString(16).padStart(2, '0')).join('')
+  const key = [...new Uint8Array(keyBytes)].map(x => x.toString(16).padStart(2, '0')).join('')
   const row = await db.prepare(`INSERT INTO recruitment_apply_rate_limits (key,hits,expires_at)
     VALUES (?,1,?)
     ON CONFLICT(key) DO UPDATE SET
@@ -64,7 +78,9 @@ async function applyThrottle(db: D1Database, request: Request, workspaceId: stri
       expires_at = CASE WHEN expires_at <= ? THEN excluded.expires_at ELSE expires_at END
     RETURNING hits`).bind(key, now + HOUR_SECONDS, now, now)
     .first<{ hits: number }>()
-  if (!row || row.hits > RATE_LIMIT) throw new Error('Too many attempts. Try again later')
+  if (!row || row.hits > RATE_LIMIT) {
+    throw new Error('Too many attempts. Try again later')
+  }
 }
 
 /**
@@ -78,9 +94,13 @@ export async function submitPublicApplicationHandler(input: PublicApplyInput): P
     throw new Error('Applications are not yet enabled for this site')
   }
   const request = currentRequest()
-  if (!request) throw new Error('Request unavailable')
+  if (!request) {
+    throw new Error('Request unavailable')
+  }
   const expectedOrigin = new URL(request.url).origin
-  if (request.headers.get('Origin') !== expectedOrigin) throw new Error('Origin rejected')
+  if (request.headers.get('Origin') !== expectedOrigin) {
+    throw new Error('Origin rejected')
+  }
 
   const workspaceSlug = trim(input.workspaceSlug, 120, 'workspace')
   const jobId = trim(input.jobId, 100, 'job')
@@ -89,7 +109,7 @@ export async function submitPublicApplicationHandler(input: PublicApplyInput): P
     throw new Error('Invalid submission key')
   }
   const fullName = trim(input.fullName, 150, 'name')
-  const phone = trim(input.phone, 40, 'phone').replace(/[\s().-]/g, '')
+  const phone = trim(input.phone, 40, 'phone').replaceAll(/[\s().-]/g, '')
   const email = trim(input.email, 250, 'email').toLowerCase()
   if (fullName.length < 2 || (!phone && !email) ||
       (phone !== '' && !/^\+?\d{7,15}$/.test(phone)) ||
@@ -112,7 +132,9 @@ export async function submitPublicApplicationHandler(input: PublicApplyInput): P
   const prior = await db.prepare(`SELECT id FROM recruitment_applications
     WHERE workspace_id=? AND job_id=? AND submission_key=? LIMIT 1`)
     .bind(job.workspace_id, jobId, key).first<{ id: string }>()
-  if (prior) return { outcome: 'already_submitted', reference: prior.id.slice(0, 8).toUpperCase() }
+  if (prior) {
+    return { outcome: 'already_submitted', reference: prior.id.slice(0, 8).toUpperCase() }
+  }
 
   await applyThrottle(db, request, job.workspace_id)
   await verifyTurnstile(input.turnstileToken, env.TURNSTILE_SECRET_KEY, request)
@@ -132,7 +154,9 @@ export async function submitPublicApplicationHandler(input: PublicApplyInput): P
     const duplicate = await db.prepare(`SELECT id FROM recruitment_applications
       WHERE workspace_id=? AND job_id=? AND candidate_id=? LIMIT 1`)
       .bind(job.workspace_id, jobId, existing.id).first<{ id: string }>()
-    if (duplicate) return { outcome: 'already_submitted', reference: duplicate.id.slice(0, 8).toUpperCase() }
+    if (duplicate) {
+      return { outcome: 'already_submitted', reference: duplicate.id.slice(0, 8).toUpperCase() }
+    }
   }
 
   const now = new Date().toISOString()
@@ -140,21 +164,22 @@ export async function submitPublicApplicationHandler(input: PublicApplyInput): P
   const applicationId = crypto.randomUUID()
   const sources = [input.utmSource, input.utmMedium, input.utmCampaign, input.utmContent]
     .map(value => trim(value, 120, 'campaign source'))
-  const statements: Array<ReturnType<typeof db.prepare>> = []
-  if (!existing) {
-    statements.push(db.prepare(`INSERT INTO recruitment_candidates
-      (id,workspace_id,full_name,email,phone,created_at) VALUES (?,?,?,?,?,?)`)
-      .bind(candidateId,job.workspace_id,fullName,email,phone,now))
-  }
-  statements.push(db.prepare(`INSERT INTO recruitment_applications
-    (id,workspace_id,job_id,candidate_id,stage,submission_key,
-     utm_source,utm_medium,utm_campaign,utm_content,created_at,updated_at)
-    VALUES (?,?,?,?,'new',?,?,?,?,?,?,?)`)
-    .bind(applicationId,job.workspace_id,jobId,candidateId,key,...sources,now,now))
-  statements.push(db.prepare(`INSERT INTO recruitment_stage_history
-    (id,workspace_id,application_id,from_stage,to_stage,actor_user_id,created_at)
-    VALUES (?,?,?,NULL,'new',NULL,?)`)
-    .bind(crypto.randomUUID(),job.workspace_id,applicationId,now))
+  const statements: Array<ReturnType<typeof db.prepare>> = [
+    ...(!existing ? [
+      db.prepare(`INSERT INTO recruitment_candidates
+        (id,workspace_id,full_name,email,phone,created_at) VALUES (?,?,?,?,?,?)`)
+        .bind(candidateId,job.workspace_id,fullName,email,phone,now)
+    ] : []),
+    db.prepare(`INSERT INTO recruitment_applications
+      (id,workspace_id,job_id,candidate_id,stage,submission_key,
+       utm_source,utm_medium,utm_campaign,utm_content,created_at,updated_at)
+      VALUES (?,?,?,?,'new',?,?,?,?,?,?,?)`)
+      .bind(applicationId,job.workspace_id,jobId,candidateId,key,...sources,now,now),
+    db.prepare(`INSERT INTO recruitment_stage_history
+      (id,workspace_id,application_id,from_stage,to_stage,actor_user_id,created_at)
+      VALUES (?,?,?,NULL,'new',NULL,?)`)
+      .bind(crypto.randomUUID(),job.workspace_id,applicationId,now)
+  ]
   // Cloudflare D1 batch is transactional; if candidate/app/history creation
   // races with a unique index, it fails together instead of creating orphans.
   try {
@@ -163,7 +188,9 @@ export async function submitPublicApplicationHandler(input: PublicApplyInput): P
     const retry = await db.prepare(`SELECT id FROM recruitment_applications
       WHERE workspace_id=? AND job_id=? AND submission_key=? LIMIT 1`)
       .bind(job.workspace_id,jobId,key).first<{ id: string }>()
-    if (retry) return { outcome: 'already_submitted', reference: retry.id.slice(0, 8).toUpperCase() }
+    if (retry) {
+      return { outcome: 'already_submitted', reference: retry.id.slice(0, 8).toUpperCase() }
+    }
     throw new Error('Could not save your request. Refresh the security check and retry')
   }
   return { outcome: 'submitted', reference: applicationId.slice(0, 8).toUpperCase() }
