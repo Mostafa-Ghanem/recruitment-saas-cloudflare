@@ -2,7 +2,8 @@ import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { causeMessage } from '@/lib/cause-message'
 import { cn } from '@/lib/utils'
 import { useRouter } from '@tanstack/react-router'
 import {
@@ -104,6 +105,8 @@ const pill = 'inline-flex min-h-10 items-center justify-center gap-2 rounded-xl 
 const primary = 'inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground hover:opacity-90 disabled:cursor-wait disabled:opacity-60'
 const field = 'w-full min-h-11 rounded-xl border border-border bg-background px-3 text-base outline-none focus-visible:ring-2 focus-visible:ring-primary/60'
 const fieldLabel = 'mb-2 block text-sm font-medium text-foreground'
+const historyDateAr = new Intl.DateTimeFormat('ar-SA', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'UTC' })
+const historyDateEn = new Intl.DateTimeFormat('en', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'UTC' })
 
 export function RecruitmentDashboard({
   workspaceSlug, data, systemRole
@@ -124,8 +127,17 @@ export function RecruitmentDashboard({
   const [editingJobId, setEditingJobId] = useState<string | null>(null)
   const [candidate, setCandidate] = useState<FormCandidate>(initialCandidate)
   const [busy, setBusy] = useState(false)
-  const [privacyUrl, setPrivacyUrl] = useState(data.settings.privacyPolicyUrl)
-  const [acceptApplications, setAcceptApplications] = useState(data.settings.acceptApplications)
+  const [privacyDraft, setPrivacyDraft] = useState<string | null>(null)
+  const [acceptDraft, setAcceptDraft] = useState<boolean | null>(null)
+  const privacyUrl = privacyDraft ?? data.settings.privacyPolicyUrl
+  const acceptApplications = acceptDraft ?? data.settings.acceptApplications
+  const [staleBefore] = useState(() => Date.now() - 48 * 60 * 60 * 1_000)
+  const modalRef = useRef<HTMLDialogElement>(null)
+  useEffect(() => {
+    if (dialog && modalRef.current && !modalRef.current.open) {
+      modalRef.current.showModal()
+    }
+  }, [dialog])
   const [openHistoryId, setOpenHistoryId] = useState<string | null>(null)
   const [historyLoadingId, setHistoryLoadingId] = useState<string | null>(null)
   const [historyItems, setHistoryItems] = useState<Record<string, Array<RecruitmentStageEvent> | undefined>>({})
@@ -139,39 +151,44 @@ export function RecruitmentDashboard({
   const filteredApplications = data.applications.filter((item) =>
     (candidateStage === 'all' || item.stage === candidateStage ||
       (candidateStage === 'stale' && item.stage === 'new' &&
-        new Date(item.created_at).getTime() < new Date().getTime() - 48 * 60 * 60 * 1_000)) &&
+        new Date(item.created_at).getTime() < staleBefore)) &&
     [item.full_name, item.phone, item.email, item.job_title].join(' ').toLocaleLowerCase().includes(search.trim().toLocaleLowerCase())
   )
 
-  async function act(action: () => Promise<unknown>, close = false) {
+  async function act(action: () => Promise<void | { id: string } | { alreadyExists: boolean }>, close = false) {
     setBusy(true)
     setError('')
     setNotice('')
+    // oxlint-disable-next-line effect/noTryCatch -- UI event boundary converts server failures to accessible notices
     try {
       const result = await action()
       await router.invalidate()
       setHistoryItems({})
-      setNotice(result && typeof result === 'object' && 'alreadyExists' in result &&
-        result.alreadyExists === true ? t.alreadyExists : t.saved)
+      setNotice(result && 'alreadyExists' in result && result.alreadyExists ? t.alreadyExists : t.saved)
       if (close) {
         setDialog(null)
         setJob(initialJob)
         setEditingJobId(null)
         setCandidate(initialCandidate)
       }
-    } catch (reason) {
-      setError(reason instanceof Error && reason.message.includes('PUBLISH_DETAILS_REQUIRED')
-        ? t.publishRequirements : t.failed)
+    } catch (error_) {
+      setError(causeMessage(error_, t.failed).includes('PUBLISH_DETAILS_REQUIRED') ? t.publishRequirements : t.failed)
     } finally {
       setBusy(false)
     }
   }
 
   async function toggleHistory(applicationId: string) {
-    if (openHistoryId === applicationId) { setOpenHistoryId(null); return }
+    if (openHistoryId === applicationId) {
+      setOpenHistoryId(null)
+      return
+    }
     setOpenHistoryId(applicationId)
-    if (historyItems[applicationId] !== undefined) return
+    if (historyItems[applicationId] !== undefined) {
+      return
+    }
     setHistoryLoadingId(applicationId)
+    // oxlint-disable-next-line effect/noTryCatch -- UI boundary: inline candidate timeline retries on failed network requests
     try {
       const events = await loadRecruitmentApplicationHistoryServerFn({
         data: { workspaceSlug, applicationId }
@@ -380,7 +397,7 @@ export function RecruitmentDashboard({
                           {lang === 'ar' ? 'عرض سجل المراحل' : 'View stage history'}
                         </Button>
                         {openHistoryId === app.id && (
-                          <div className="mt-3 space-y-2 rounded-xl bg-muted/50 p-3 text-xs" role="region"
+                          <section className="mt-3 space-y-2 rounded-xl bg-muted/50 p-3 text-xs"
                             aria-label={lang === 'ar' ? 'سجل مراحل المرشح' : 'Candidate stage history'}>
                             {historyLoadingId === app.id ? (lang === 'ar' ? 'جاري التحميل...' : 'Loading...') :
                               (historyItems[app.id]?.length ? historyItems[app.id]?.map(event => (
@@ -391,11 +408,11 @@ export function RecruitmentDashboard({
                                   <span className="text-muted-foreground">
                                     {event.changed_by_team ? (lang === 'ar' ? 'فريق التوظيف' : 'Recruitment team') :
                                       (lang === 'ar' ? 'نظام التقديم' : 'Application system')}
-                                    {' · '}{new Intl.DateTimeFormat(lang === 'ar' ? 'ar-SA' : 'en', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(event.created_at))}
+                                    {' · '}{(lang === 'ar' ? historyDateAr : historyDateEn).format(new Date(event.created_at))}
                                   </span>
                                 </div>
                               )) : (lang === 'ar' ? 'لا يوجد سجل سابق.' : 'No events recorded.'))}
-                          </div>
+                          </section>
                         )}
                       </div>
                     </article>
@@ -419,17 +436,17 @@ export function RecruitmentDashboard({
               <Input name="privacy-policy-url" className={field} type="url" required={acceptApplications}
                 pattern="https://.*" autoComplete="url" maxLength={1000}
                 placeholder="https://company.example/privacy"
-                value={privacyUrl} onChange={e => setPrivacyUrl(e.target.value)} />
+                value={privacyUrl} onChange={e => setPrivacyDraft(e.target.value)} />
             </Label>
             <Label className="flex items-start gap-3 text-sm">
               <Input name="accept-applications" type="checkbox" className="mt-1 size-4 accent-primary"
                 checked={acceptApplications}
-                onChange={e => setAcceptApplications(e.target.checked)} />
+                onChange={e => setAcceptDraft(e.target.checked)} />
               <span>{t.privacyEnable}</span>
             </Label>
-            <p role="status" className="text-xs text-muted-foreground">
+            <output className="block text-xs text-muted-foreground">
               {data.settings.runtimeConfigured ? t.privacyConfigured : t.privacyNotConfigured}
-            </p>
+            </output>
             <Button type="submit" className={primary}
               disabled={busy || (acceptApplications && !privacyUrl.startsWith('https://'))}>
               {t.privacySave}
@@ -441,8 +458,16 @@ export function RecruitmentDashboard({
       </section>
 
       {dialog && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/70 p-3 sm:p-6" onMouseDown={e => { if (e.target === e.currentTarget && !busy) setDialog(null) }}>
-          <div role="dialog" aria-modal="true" aria-labelledby="ats-dialog-title" dir={lang === 'ar' ? 'rtl' : 'ltr'} lang={lang === 'ar' ? 'ar-SA' : 'en'} className="my-auto w-full max-w-xl rounded-2xl border border-border bg-card p-5 text-foreground shadow-2xl sm:p-7">
+        <dialog ref={modalRef} aria-labelledby="ats-dialog-title"
+          onCancel={event => {
+            if (busy) {
+              event.preventDefault()
+            } else {
+              setDialog(null)
+            }
+          }}
+          dir={lang === 'ar' ? 'rtl' : 'ltr'} lang={lang === 'ar' ? 'ar-SA' : 'en'}
+          className="fixed inset-0 z-50 m-auto max-h-[calc(100dvh-2rem)] w-full max-w-xl overflow-y-auto rounded-2xl bg-card p-5 text-foreground backdrop:bg-black/70 sm:p-7">
             <div className="mb-5 flex items-center justify-between">
               <div>
                 <h2 id="ats-dialog-title" className="text-xl font-semibold">{dialog === 'job' ? (editingJobId ? t.editJob : t.quickJob) : t.quickCandidate}</h2>
@@ -473,8 +498,7 @@ export function RecruitmentDashboard({
                 <div className="flex justify-end gap-2 pt-3"><Button type="button" className={pill} disabled={busy} onClick={()=>setDialog(null)}>{t.cancel}</Button><Button type="submit" className={primary} disabled={busy || !candidate.fullName.trim() || !candidate.jobId || !(candidate.phone.trim() || candidate.email.trim())}>{t.saveCandidate} <ArrowUpRightIcon className="size-4"/></Button></div>
               </form>
             )}
-          </div>
-        </div>
+        </dialog>
       )}
     </WorkspaceShell>
   )
