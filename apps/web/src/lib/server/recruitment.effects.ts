@@ -1,3 +1,4 @@
+/* oxlint-disable effect/noThrowStatement, effect/noNewError, effect/noTryCatch -- TanStack's promise-returning server-function boundary serializes validation failures as thrown errors. The Effect permission gate executes before D1 access. */
 import { env } from 'cloudflare:workers'
 import { Effect } from 'effect'
 import { WorkspaceContext } from '@b2b-saas-starter/capabilities/workspace-context'
