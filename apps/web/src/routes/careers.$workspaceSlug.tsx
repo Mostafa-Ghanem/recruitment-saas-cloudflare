@@ -22,10 +22,15 @@ function CareersRoute() {
   const [locale, setLocale] = useState<'ar'|'en'>('ar')
   const [activeJobId, setActiveJobId] = useState<string | null>(null)
   const ar = locale === 'ar'
+  const copy = ar
+    ? { applyEnabled: 'تقديم سريع بدون إنشاء حساب', applyDisabled: 'التقديم الإلكتروني لهذه الوظيفة لم يُفعّل بعد.',
+        open: 'قدّم الآن', close: 'إغلاق التقديم' }
+    : { applyEnabled: 'Quick application with no account', applyDisabled: 'Online applications are not enabled for this role yet.',
+        open: 'Apply now', close: 'Close application' }
   return (
     <main lang={ar ? 'ar-SA' : 'en'} dir={ar ? 'rtl' : 'ltr'} className="min-h-dvh bg-background text-foreground">
       <header className="border-b border-border">
-        <div className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-5 py-5">
+        <div className="mx-auto flex max-w-5xl items-center justify-between gap-4 p-5">
           <div className="flex items-center gap-3">
             <div className="rounded-xl bg-primary/10 p-2.5"><BriefcaseBusinessIcon className="size-6 text-primary"/></div>
             <span className="text-base font-semibold">{data.company || (ar ? 'الوظائف' : 'Careers')}</span>
@@ -54,7 +59,7 @@ function CareersRoute() {
         {data.jobs.length ? (
           <div className="grid gap-4">
             {data.jobs.map(job => (
-              <article key={job.id} id={'job-' + job.id} className="scroll-mt-10 rounded-2xl border border-border bg-card p-5 sm:p-7">
+              <article key={job.id} id={`job-${job.id}`} className="scroll-mt-10 rounded-2xl border border-border bg-card p-5 sm:p-7">
                 <div className="flex flex-wrap items-start justify-between gap-4">
                   <div className="max-w-2xl">
                     <h3 className="text-xl font-semibold">{job.title}</h3>
@@ -76,7 +81,7 @@ function CareersRoute() {
                   </p>
                   {data.applicationConfig.enabled && (
                     <Button type="button" aria-expanded={activeJobId === job.id}
-                      aria-controls={'apply-' + job.id}
+                      aria-controls={`apply-${job.id}`}
                       onClick={() => setActiveJobId(activeJobId === job.id ? null : job.id)}
                       className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-primary px-5 font-semibold text-primary-foreground hover:opacity-90">
                       <ArrowUpRightIcon aria-hidden className="size-4"/>
@@ -86,7 +91,7 @@ function CareersRoute() {
                   )}
                 </div>
                 {data.applicationConfig.enabled && activeJobId === job.id && (
-                  <div id={'apply-' + job.id}>
+                  <div id={`apply-${job.id}`}>
                     <PublicApplicationForm key={job.id} workspaceSlug={data.slug} jobId={job.id}
                       jobTitle={job.title} company={data.company}
                       locale={locale} siteKey={data.applicationConfig.siteKey}
