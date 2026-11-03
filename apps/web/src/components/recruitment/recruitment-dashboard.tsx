@@ -1082,16 +1082,17 @@ export function RecruitmentDashboard({
               className="space-y-4"
               onSubmit={(e) => {
                 e.preventDefault()
-                void act(
-                  async () => {
-                    if (editingJobId) {
-                      await editRecruitmentJobServerFn({ data: { workspaceSlug, jobId: editingJobId, ...job } })
-                    } else {
-                      await createRecruitmentJobServerFn({ data: { workspaceSlug, ...job } })
-                    }
-                  },
-                  true
-                )
+                void act(async () => {
+                  if (editingJobId) {
+                    await editRecruitmentJobServerFn({
+                      data: { workspaceSlug, jobId: editingJobId, ...job }
+                    })
+                  } else {
+                    await createRecruitmentJobServerFn({
+                      data: { workspaceSlug, ...job }
+                    })
+                  }
+                }, true)
               }}
             >
               <Label className="block">
