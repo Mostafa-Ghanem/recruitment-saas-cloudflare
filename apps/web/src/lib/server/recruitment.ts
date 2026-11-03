@@ -31,6 +31,7 @@ export type RecruitmentApplication = {
 }
 
 export type RecruitmentOverview = {
+  staleBefore: string
   jobs: Array<RecruitmentJob>
   applications: Array<RecruitmentApplication>
   settings: { acceptApplications: boolean; privacyPolicyUrl: string; runtimeConfigured: boolean }
