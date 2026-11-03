@@ -1,23 +1,10 @@
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
-import { useEffect, useRef, useState, type FormEvent } from 'react'
+import { useRef, useState, type SyntheticEvent } from 'react'
+import { TurnstileWidget } from '@/components/auth/turnstile-widget'
 import { CheckCircle2Icon, ShieldCheckIcon, XIcon } from 'lucide-react'
 import { submitPublicApplicationServerFn } from '@/lib/server/public-application'
-
-type TurnstileOptions = {
-  sitekey: string
-  action: string
-  callback: (token: string) => void
-  'expired-callback': () => void
-  'error-callback': () => void
-}
-type Turnstile = {
-  render: (container: HTMLElement, options: TurnstileOptions) => string
-  reset: (widgetId: string) => void
-  remove: (widgetId: string) => void
-}
-const turnstileWindow = () => window as Window & { turnstile?: Turnstile }
 
 export function PublicApplicationForm({
   workspaceSlug, jobId, jobTitle, company, siteKey, privacyPolicyUrl,
@@ -42,48 +29,12 @@ export function PublicApplicationForm({
   const [busy, setBusy] = useState(false)
   const [reference, setReference] = useState('')
   const [alreadySubmitted, setAlreadySubmitted] = useState(false)
-  const widgetBox = useRef<HTMLDivElement>(null)
-  const widgetId = useRef<string | null>(null)
+  const [turnstileResetKey, setTurnstileResetKey] = useState(0)
   const submissionKey = useRef<string | null>(null)
   const nameInput = useRef<HTMLInputElement>(null)
-  const turnstile = useRef<Turnstile | null>(null)
 
-  useEffect(() => { nameInput.current?.focus() }, [jobId])
-  useEffect(() => {
-    let active = true
-    let script: HTMLScriptElement | undefined
-    let retryId: ReturnType<typeof setTimeout> | undefined
-    const renderWidget = () => {
-      if (!active || !widgetBox.current || widgetId.current) return
-      const api = turnstileWindow().turnstile
-      if (!api) { retryId = setTimeout(renderWidget, 100); return }
-      turnstile.current = api
-      widgetId.current = api.render(widgetBox.current, {
-        sitekey: siteKey,
-        action: 'recruitment_apply',
-        callback: token => { if (active) { setSecurityToken(token); setSecurityError('') } },
-        'expired-callback': () => { if (active) setSecurityToken('') },
-        'error-callback': () => { if (active) { setSecurityToken(''); setSecurityError(ar ? 'تعذر إكمال التحقق الأمني. حاول مجددًا.' : 'Security verification failed. Please retry.') } }
-      }) ?? null
-    }
-    if (!turnstileWindow().turnstile) {
-      script = document.createElement('script')
-      script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit'
-      script.async = true
-      script.onload = renderWidget
-      script.onerror = () => { if (active) setSecurityError(ar ? 'تعذر تحميل التحقق الأمني.' : 'Could not load the security check.') }
-      document.head.appendChild(script)
-    } else renderWidget()
-    return () => {
-      active = false
-      if (retryId) clearTimeout(retryId)
-      if (widgetId.current && turnstile.current) turnstile.current.remove(widgetId.current)
-      widgetId.current = null
-      script?.remove()
-    }
-  }, [siteKey, jobId, ar])
 
-  async function submit(event: FormEvent<HTMLFormElement>) {
+  async function submit(event: SyntheticEvent<HTMLFormElement>) {
     event.preventDefault()
     if (!securityToken) {
       setSecurityError(ar ? 'أكمل التحقق الأمني قبل التقديم.' : 'Complete the security check first.')
@@ -114,7 +65,7 @@ export function PublicApplicationForm({
       setError(ar ? 'لم نستطع تأكيد إرسال الطلب. راجع البيانات وأعد المحاولة. لن يُكرر الطلب عند إعادة الإرسال.' :
         'We could not confirm your application. Please retry. Your request will not be duplicated.')
       setSecurityToken('')
-      if (widgetId.current) turnstile.current?.reset(widgetId.current)
+      setTurnstileResetKey(value => value + 1)
     } finally { setBusy(false) }
   }
 
@@ -153,7 +104,7 @@ export function PublicApplicationForm({
       <form className="mt-5 space-y-4" onSubmit={e => { void submit(e) }}>
         <Label className="block">
           <span className="mb-1.5 block text-sm font-medium">{ar ? 'الاسم الكامل' : 'Full name'} *</span>
-          <Input ref={nameInput} required autoComplete="name" name="name" minLength={2} maxLength={150}
+          <Input ref={nameInput} autoFocus required autoComplete="name" name="name" minLength={2} maxLength={150}
             value={name} onChange={e => setName(e.target.value)}
             className="min-h-12 w-full rounded-xl border border-border bg-background px-4 outline-none focus-visible:ring-2 focus-visible:ring-primary"/>
         </Label>
@@ -178,7 +129,12 @@ export function PublicApplicationForm({
             {ar ? 'سياسة الخصوصية' : 'privacy policy'}
           </a>.
         </p>
-        <div ref={widgetBox} aria-label={ar ? 'التحقق الأمني' : 'Security check'} />
+        <TurnstileWidget siteKey={siteKey} action="recruitment_apply"
+          onToken={token => {
+            setSecurityToken(token ?? '')
+            setSecurityError(token ? '' : (ar ? 'أعد إكمال التحقق الأمني.' : 'Please complete the security check again.'))
+          }}
+          resetKey={turnstileResetKey} />
         {securityError && <p role="alert" className="text-sm text-destructive">{securityError}</p>}
         {error && <p role="alert" className="rounded-lg border border-destructive/30 p-3 text-sm text-destructive">{error}</p>}
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
