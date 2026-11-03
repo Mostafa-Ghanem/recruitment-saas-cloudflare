@@ -31,9 +31,17 @@ export function PublicApplicationForm({
   const [alreadySubmitted, setAlreadySubmitted] = useState(false)
   const [turnstileResetKey, setTurnstileResetKey] = useState(0)
   const submissionKey = useRef<string | null>(null)
-  const nameInput = useRef<HTMLInputElement>(null)
 
 
+  const language = ar ? 'ar' : 'en'
+  const submitLabels = {
+    ar: { sending: 'جارٍ إرسال الطلب…', ready: 'إرسال طلب التوظيف' },
+    en: { sending: 'Submitting…', ready: 'Submit application' }
+  }
+  const confirmationTitles = {
+    ar: { duplicate: 'طلبك موجود بالفعل', success: 'تم استلام طلبك بنجاح' },
+    en: { duplicate: 'Your application already exists', success: 'Application received' }
+  }
   async function submit(event: SyntheticEvent<HTMLFormElement>) {
     event.preventDefault()
     if (!securityToken) {
@@ -45,8 +53,11 @@ export function PublicApplicationForm({
       return
     }
     setBusy(true); setError('')
+    // oxlint-disable-next-line effect/noTryCatch -- UI event boundary maps network failures to an accessible retry state
     try {
-      if (!submissionKey.current) submissionKey.current = crypto.randomUUID()
+      if (!submissionKey.current) {
+        submissionKey.current = crypto.randomUUID()
+      }
       const query = new URLSearchParams(window.location.search)
       const result = await submitPublicApplicationServerFn({
         data: {
@@ -69,12 +80,11 @@ export function PublicApplicationForm({
     } finally { setBusy(false) }
   }
 
-  if (reference) return (
-    <section role="status" className="mt-5 rounded-2xl border border-emerald-500/30 bg-emerald-500/5 p-6 text-center">
+  if (reference) {
+    return (
+    <section aria-live="polite" className="mt-5 rounded-2xl border border-emerald-500/30 bg-emerald-500/5 p-6 text-center">
       <CheckCircle2Icon aria-hidden className="mx-auto mb-3 size-10 text-emerald-500" />
-      <h4 className="text-xl font-semibold">{alreadySubmitted
-        ? (ar ? 'طلبك موجود بالفعل' : 'Your application already exists')
-        : (ar ? 'تم استلام طلبك بنجاح' : 'Application received')}</h4>
+      <h4 className="text-xl font-semibold">{confirmationTitles[language][alreadySubmitted ? 'duplicate' : 'success']}</h4>
       <p className="mt-2 text-sm text-muted-foreground">
         {ar ? 'احتفظ بالرقم المرجعي للمتابعة:' : 'Keep this reference for your records:'}
         {' '}<strong dir="ltr" className="font-mono text-foreground">{reference}</strong>
@@ -86,7 +96,8 @@ export function PublicApplicationForm({
         {ar ? 'تم' : 'Done'}
       </Button>
     </section>
-  )
+    )
+  }
 
   return (
     <section className="mt-5 rounded-2xl border border-primary/30 bg-card p-5 sm:p-6" aria-label={ar ? 'نموذج التقديم' : 'Apply for this job'}>
@@ -104,7 +115,7 @@ export function PublicApplicationForm({
       <form className="mt-5 space-y-4" onSubmit={e => { void submit(e) }}>
         <Label className="block">
           <span className="mb-1.5 block text-sm font-medium">{ar ? 'الاسم الكامل' : 'Full name'} *</span>
-          <Input ref={nameInput} autoFocus required autoComplete="name" name="name" minLength={2} maxLength={150}
+          <Input required autoComplete="name" name="name" minLength={2} maxLength={150}
             value={name} onChange={e => setName(e.target.value)}
             className="min-h-12 w-full rounded-xl border border-border bg-background px-4 outline-none focus-visible:ring-2 focus-visible:ring-primary"/>
         </Label>
@@ -123,8 +134,8 @@ export function PublicApplicationForm({
           </Label>
         </div>
         <p className="text-xs text-muted-foreground">
-          {ar ? 'سيستخدم ' + company + ' بياناتك للنظر في طلبك والتواصل بشأن الوظيفة. اطّلع على ' :
-            company + ' will use your details to assess and contact you about this role. Read the '}
+          {ar ? `سيستخدم ${company} بياناتك للنظر في طلبك والتواصل بشأن الوظيفة. اطّلع على ` :
+            `${company} will use your details to assess and contact you about this role. Read the `}
           <a href={privacyPolicyUrl} target="_blank" rel="noopener noreferrer" className="font-semibold text-primary underline">
             {ar ? 'سياسة الخصوصية' : 'privacy policy'}
           </a>.
@@ -141,7 +152,7 @@ export function PublicApplicationForm({
           <p className="flex items-center gap-1.5 text-xs text-muted-foreground"><ShieldCheckIcon className="size-4" />{ar ? 'بياناتك لا تظهر للعامة' : 'Your details are private'}</p>
           <Button type="submit" disabled={busy || !securityToken || !name.trim() || !(phone.trim() || email.trim())}
             className="min-h-12 rounded-xl bg-primary px-6 text-sm font-semibold text-primary-foreground disabled:opacity-50">
-            {busy ? (ar ? 'جارٍ إرسال الطلب...' : 'Submitting...') : (ar ? 'إرسال طلب التوظيف' : 'Submit application')}
+            {submitLabels[language][busy ? 'sending' : 'ready']}
           </Button>
         </div>
       </form>
