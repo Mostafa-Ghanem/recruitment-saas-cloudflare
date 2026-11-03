@@ -45,6 +45,9 @@ async function authorizedWorkspace(slug: string): Promise<{
   db: D1Database;
   actorUserId: string;
 }> {
+  if (!env.DB) {
+    throw new Error("Recruitment requires a configured Cloudflare D1 database");
+  }
   const session = await requireRequestSession();
   const result = await runWorkspaceCapabilities(
     slug,
@@ -58,9 +61,6 @@ async function authorizedWorkspace(slug: string): Promise<{
     }),
     { userId: session.user.id },
   );
-  if (!env.DB) {
-    throw new Error("Recruitment requires a configured Cloudflare D1 database");
-  }
   return { ...result, actorUserId: session.user.id, db: env.DB };
 }
 
@@ -68,7 +68,7 @@ export async function loadRecruitmentHandler(input: {
   workspaceSlug: string;
 }): Promise<RecruitmentOverview> {
   const { workspaceId, role, db } = await authorizedWorkspace(input.workspaceSlug);
-  const staleBefore = new Date(Date.now() - 48 * 60 * 60 * 1_000).toISOString();
+  const staleBefore = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
   type CountRow = {
     jobs_count: number;
     published_count: number;
@@ -77,6 +77,7 @@ export async function loadRecruitmentHandler(input: {
     new_count: number;
     stale_count: number;
   };
+  // oxlint-disable-next-line effect/noNewPromise -- D1 read-only queries run concurrently; Promise.all is the Cloudflare API boundary
   const [jobResult, applicationResult, countRow, settingsRow] = await Promise.all([
     db
       .prepare(`SELECT j.id,j.title,j.department,j.location,j.employment_type,j.description,
@@ -127,6 +128,7 @@ export async function loadRecruitmentHandler(input: {
     jobs,
     applications,
     viewer: { role },
+    staleBefore,
     settings: {
       acceptApplications: settingsRow?.accept_applications === 1,
       privacyPolicyUrl: settingsRow?.privacy_policy_url ?? "",
@@ -135,12 +137,12 @@ export async function loadRecruitmentHandler(input: {
         Boolean(env.TURNSTILE_SITE_KEY && env.TURNSTILE_SECRET_KEY),
     },
     counts: {
-      jobs: Number(countRow?.jobs_count ?? 0),
-      published: Number(countRow?.published_count ?? 0),
-      applications: Number(countRow?.applications_count ?? 0),
-      interviewing: Number(countRow?.interviewing_count ?? 0),
-      newApplications: Number(countRow?.new_count ?? 0),
-      staleApplications: Number(countRow?.stale_count ?? 0),
+      jobs: countRow?.jobs_count ?? 0,
+      published: countRow?.published_count ?? 0,
+      applications: countRow?.applications_count ?? 0,
+      interviewing: countRow?.interviewing_count ?? 0,
+      newApplications: countRow?.new_count ?? 0,
+      staleApplications: countRow?.stale_count ?? 0,
     },
   };
 }
@@ -232,7 +234,9 @@ export async function updateRecruitmentJobStatusHandler(input: {
     WHERE workspace_id=? AND id=?`)
     .bind(input.status, new Date().toISOString(), workspaceId, input.jobId)
     .run();
-  if (update.meta.changes === 0) throw new Error("Job not found in this workspace");
+  if (update.meta.changes === 0) {
+    throw new Error("Job not found in this workspace");
+  }
 }
 
 export async function addRecruitmentCandidateHandler(input: {
