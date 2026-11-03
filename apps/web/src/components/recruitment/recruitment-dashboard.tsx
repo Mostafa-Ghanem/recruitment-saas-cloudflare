@@ -198,6 +198,12 @@ export function RecruitmentDashboard({
     setDialog('job')
   }
 
+  const stageLabels: Record<string, string> = {
+    new: t.new, screening: t.screening, shortlisted: t.shortlisted,
+    interview: t.interview, offer: t.offer, hired: t.hired,
+    rejected: t.rejected, withdrawn: t.withdrawn
+  }
+
   const summary = [
     { label: t.jobs, count: data.counts.jobs, icon: BriefcaseBusinessIcon },
     { label: t.published, count: data.counts.published, icon: CheckCircle2Icon },
@@ -206,7 +212,7 @@ export function RecruitmentDashboard({
   ]
 
   return (
-    <WorkspaceShell workspaceSlug={workspaceSlug} viewer={{ role: data.viewer.role as 'owner' | 'admin' | 'member' }} systemRole={systemRole} layout="wide">
+    <WorkspaceShell workspaceSlug={workspaceSlug} viewer={{ role: data.viewer.role }} systemRole={systemRole} layout="wide">
       <section lang={lang === 'ar' ? 'ar-SA' : 'en'} dir={lang === 'ar' ? 'rtl' : 'ltr'} className="mx-auto max-w-7xl space-y-6 pb-14 font-sans">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <p className="text-xs font-medium tracking-wide text-muted-foreground">{t.eyebrow}</p>
@@ -381,8 +387,7 @@ export function RecruitmentDashboard({
                               (historyItems[app.id]?.length ? historyItems[app.id]?.map(event => (
                                 <div key={event.id} className="flex flex-wrap items-center justify-between gap-2 border-b border-border/50 py-2 last:border-0">
                                   <span className="font-medium">
-                                    {stages.includes(event.to_stage as typeof stages[number])
-                                      ? t[event.to_stage as typeof stages[number]] : event.to_stage}
+                                    {stageLabels[event.to_stage] ?? event.to_stage}
                                   </span>
                                   <span className="text-muted-foreground">
                                     {event.changed_by_team ? (lang === 'ar' ? 'فريق التوظيف' : 'Recruitment team') :
