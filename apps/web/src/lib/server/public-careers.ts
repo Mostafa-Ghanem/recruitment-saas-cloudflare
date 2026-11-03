@@ -14,7 +14,7 @@ export type PublicRecruitmentJob = {
 export type PublicCareersData = {
   company: string
   slug: string
-  jobs: PublicRecruitmentJob[]
+  jobs: Array<PublicRecruitmentJob>
   applicationConfig: { enabled: boolean; siteKey: string; privacyPolicyUrl: string }
 }
 
