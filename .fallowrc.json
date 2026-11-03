@@ -64,6 +64,8 @@
   // (@base-ui/react, cva, cmdk, sonner) are consumed only from there.
   "ignorePatterns": [
     "vendor/**",
+    // Separately deployed static UX sample, not imported by the main SaaS; node --check in smoke scripts validates its syntax.
+    "preview/worker.js",
     "apps/web/src/index.css",
     "apps/web/src/components/ui/**",
     "packages/i18n/src/generated/**",
