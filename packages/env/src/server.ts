@@ -39,6 +39,8 @@ export type ServerEnv = {
   readonly PRIVACY_CONTACT_EMAIL?: string | undefined
   readonly CLOUDFLARE_EMAIL_FROM?: string | undefined
   readonly TURNSTILE_SITE_KEY?: string | undefined
+  /** Explicit opt-in after privacy and rollout review. */
+  readonly RECRUITMENT_PUBLIC_APPLY_ENABLED?: string | undefined
   readonly TURNSTILE_SECRET_KEY?: string | undefined
   readonly WORKERS_AI_ENABLED?: string | undefined
   readonly OPENAI_API_KEY?: string | undefined
@@ -145,6 +147,7 @@ export const optionalModuleEnvPlainKeys = [
   'STRIPE_PRICE_ID_ENTERPRISE_ANNUAL',
   'STRIPE_PRICE_ID_ENTERPRISE',
   'TURNSTILE_SITE_KEY',
+  'RECRUITMENT_PUBLIC_APPLY_ENABLED',
   'CLOUDFLARE_EMAIL_FROM',
   'WORKERS_AI_ENABLED',
   'OPENAI_BASE_URL',

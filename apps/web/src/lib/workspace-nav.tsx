@@ -1,5 +1,6 @@
 import { type ReactNode } from 'react'
 import {
+  BriefcaseBusinessIcon,
   CreditCardIcon,
   HelpCircleIcon,
   HistoryIcon,
@@ -18,6 +19,7 @@ import { m } from '@b2b-saas-starter/i18n/messages'
 export type WorkspaceNavTarget =
   | '/workspaces/$workspaceSlug'
   | '/workspaces/$workspaceSlug/assistant'
+  | '/workspaces/$workspaceSlug/recruitment'
   | '/workspaces/$workspaceSlug/api-tokens'
   | '/workspaces/$workspaceSlug/billing'
   | '/workspaces/$workspaceSlug/members'
@@ -84,6 +86,13 @@ export function workspaceNav(): ReadonlyArray<WorkspaceNavRow> {
       group: m.nav_workspace_group(),
       icon: <LayoutDashboardIcon className="size-4" />,
       exact: true
+    },
+    {
+      to: '/workspaces/$workspaceSlug/recruitment',
+      label: 'Recruitment / التوظيف',
+      group: m.nav_workspace_group(),
+      icon: <BriefcaseBusinessIcon className="size-4" />,
+      permission: { organization: ['update'] }
     },
     {
       to: '/workspaces/$workspaceSlug/assistant',

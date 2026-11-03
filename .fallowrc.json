@@ -7,7 +7,7 @@
     "maxFileLines": 1000
   },
   "entry": [
-    "alchemy.run.ts",
+    // Separate synthetic-only UX demo deployed as a standalone Cloudflare Worker.\n    "preview/worker.js",\n    "alchemy.run.ts",
     "alchemy.bootstrap.ts",
     "alchemy.email.ts",
     "alchemy.github.ts",
@@ -64,6 +64,8 @@
   // (@base-ui/react, cva, cmdk, sonner) are consumed only from there.
   "ignorePatterns": [
     "vendor/**",
+    // Separately deployed static UX sample, not imported by the main SaaS; node --check in smoke scripts validates its syntax.
+    "preview/worker.js",
     "apps/web/src/index.css",
     "apps/web/src/components/ui/**",
     "packages/i18n/src/generated/**",

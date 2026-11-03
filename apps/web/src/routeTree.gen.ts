@@ -30,6 +30,7 @@ import { Route as DotwellKnownOauthAuthorizationServerRouteImport } from './rout
 import { Route as KnowledgeChangelogRouteImport } from './routes/_knowledge.changelog'
 import { Route as AccountNotificationsRouteImport } from './routes/account_.notifications'
 import { Route as ApiSupportConfigRouteImport } from './routes/api.support-config'
+import { Route as CareersWorkspaceSlugRouteImport } from './routes/careers.$workspaceSlug'
 import { Route as DemoSectionRouteImport } from './routes/demo_.$section'
 import { Route as HelpIndexRouteImport } from './routes/help.index'
 import { Route as InvitationsAcceptRouteImport } from './routes/invitations.accept'
@@ -48,6 +49,7 @@ import { Route as WorkspacesWorkspaceSlugAssistantRouteImport } from './routes/w
 import { Route as WorkspacesWorkspaceSlugAuditRouteImport } from './routes/workspaces.$workspaceSlug.audit'
 import { Route as WorkspacesWorkspaceSlugBillingRouteImport } from './routes/workspaces.$workspaceSlug.billing'
 import { Route as WorkspacesWorkspaceSlugMembersRouteImport } from './routes/workspaces.$workspaceSlug.members'
+import { Route as WorkspacesWorkspaceSlugRecruitmentRouteImport } from './routes/workspaces.$workspaceSlug.recruitment'
 import { Route as WorkspacesWorkspaceSlugSettingsRouteImport } from './routes/workspaces.$workspaceSlug.settings'
 import { Route as WorkspacesWorkspaceSlugSuspendedRouteImport } from './routes/workspaces.$workspaceSlug.suspended'
 import { Route as WorkspacesWorkspaceSlugWebhooksRouteImport } from './routes/workspaces.$workspaceSlug.webhooks'
@@ -159,6 +161,11 @@ const ApiSupportConfigRoute = ApiSupportConfigRouteImport.update({
   path: '/api/support-config',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CareersWorkspaceSlugRoute = CareersWorkspaceSlugRouteImport.update({
+  id: '/careers/$workspaceSlug',
+  path: '/careers/$workspaceSlug',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DemoSectionRoute = DemoSectionRouteImport.update({
   id: '/demo_/$section',
   path: '/demo/$section',
@@ -256,6 +263,12 @@ const WorkspacesWorkspaceSlugMembersRoute =
     path: '/members',
     getParentRoute: () => WorkspacesWorkspaceSlugRoute,
   } as any)
+const WorkspacesWorkspaceSlugRecruitmentRoute =
+  WorkspacesWorkspaceSlugRecruitmentRouteImport.update({
+    id: '/recruitment',
+    path: '/recruitment',
+    getParentRoute: () => WorkspacesWorkspaceSlugRoute,
+  } as any)
 const WorkspacesWorkspaceSlugSettingsRoute =
   WorkspacesWorkspaceSlugSettingsRouteImport.update({
     id: '/settings',
@@ -308,6 +321,7 @@ export interface FileRoutesByFullPath {
   '/changelog': typeof KnowledgeChangelogRoute
   '/account/notifications': typeof AccountNotificationsRoute
   '/api/support-config': typeof ApiSupportConfigRoute
+  '/careers/$workspaceSlug': typeof CareersWorkspaceSlugRoute
   '/demo/$section': typeof DemoSectionRoute
   '/invitations/accept': typeof InvitationsAcceptRoute
   '/magic-link/verify': typeof MagicLinkVerifyRoute
@@ -324,6 +338,7 @@ export interface FileRoutesByFullPath {
   '/workspaces/$workspaceSlug/audit': typeof WorkspacesWorkspaceSlugAuditRoute
   '/workspaces/$workspaceSlug/billing': typeof WorkspacesWorkspaceSlugBillingRoute
   '/workspaces/$workspaceSlug/members': typeof WorkspacesWorkspaceSlugMembersRoute
+  '/workspaces/$workspaceSlug/recruitment': typeof WorkspacesWorkspaceSlugRecruitmentRoute
   '/workspaces/$workspaceSlug/settings': typeof WorkspacesWorkspaceSlugSettingsRoute
   '/workspaces/$workspaceSlug/suspended': typeof WorkspacesWorkspaceSlugSuspendedRoute
   '/workspaces/$workspaceSlug/webhooks': typeof WorkspacesWorkspaceSlugWebhooksRoute
@@ -352,6 +367,7 @@ export interface FileRoutesByTo {
   '/changelog': typeof KnowledgeChangelogRoute
   '/account/notifications': typeof AccountNotificationsRoute
   '/api/support-config': typeof ApiSupportConfigRoute
+  '/careers/$workspaceSlug': typeof CareersWorkspaceSlugRoute
   '/demo/$section': typeof DemoSectionRoute
   '/invitations/accept': typeof InvitationsAcceptRoute
   '/magic-link/verify': typeof MagicLinkVerifyRoute
@@ -367,6 +383,7 @@ export interface FileRoutesByTo {
   '/workspaces/$workspaceSlug/audit': typeof WorkspacesWorkspaceSlugAuditRoute
   '/workspaces/$workspaceSlug/billing': typeof WorkspacesWorkspaceSlugBillingRoute
   '/workspaces/$workspaceSlug/members': typeof WorkspacesWorkspaceSlugMembersRoute
+  '/workspaces/$workspaceSlug/recruitment': typeof WorkspacesWorkspaceSlugRecruitmentRoute
   '/workspaces/$workspaceSlug/settings': typeof WorkspacesWorkspaceSlugSettingsRoute
   '/workspaces/$workspaceSlug/suspended': typeof WorkspacesWorkspaceSlugSuspendedRoute
   '/workspaces/$workspaceSlug/webhooks': typeof WorkspacesWorkspaceSlugWebhooksRoute
@@ -398,6 +415,7 @@ export interface FileRoutesById {
   '/_knowledge/changelog': typeof KnowledgeChangelogRoute
   '/account_/notifications': typeof AccountNotificationsRoute
   '/api/support-config': typeof ApiSupportConfigRoute
+  '/careers/$workspaceSlug': typeof CareersWorkspaceSlugRoute
   '/demo_/$section': typeof DemoSectionRoute
   '/invitations/accept': typeof InvitationsAcceptRoute
   '/magic-link/verify': typeof MagicLinkVerifyRoute
@@ -414,6 +432,7 @@ export interface FileRoutesById {
   '/workspaces/$workspaceSlug/audit': typeof WorkspacesWorkspaceSlugAuditRoute
   '/workspaces/$workspaceSlug/billing': typeof WorkspacesWorkspaceSlugBillingRoute
   '/workspaces/$workspaceSlug/members': typeof WorkspacesWorkspaceSlugMembersRoute
+  '/workspaces/$workspaceSlug/recruitment': typeof WorkspacesWorkspaceSlugRecruitmentRoute
   '/workspaces/$workspaceSlug/settings': typeof WorkspacesWorkspaceSlugSettingsRoute
   '/workspaces/$workspaceSlug/suspended': typeof WorkspacesWorkspaceSlugSuspendedRoute
   '/workspaces/$workspaceSlug/webhooks': typeof WorkspacesWorkspaceSlugWebhooksRoute
@@ -445,6 +464,7 @@ export interface FileRouteTypes {
     | '/changelog'
     | '/account/notifications'
     | '/api/support-config'
+    | '/careers/$workspaceSlug'
     | '/demo/$section'
     | '/invitations/accept'
     | '/magic-link/verify'
@@ -461,6 +481,7 @@ export interface FileRouteTypes {
     | '/workspaces/$workspaceSlug/audit'
     | '/workspaces/$workspaceSlug/billing'
     | '/workspaces/$workspaceSlug/members'
+    | '/workspaces/$workspaceSlug/recruitment'
     | '/workspaces/$workspaceSlug/settings'
     | '/workspaces/$workspaceSlug/suspended'
     | '/workspaces/$workspaceSlug/webhooks'
@@ -489,6 +510,7 @@ export interface FileRouteTypes {
     | '/changelog'
     | '/account/notifications'
     | '/api/support-config'
+    | '/careers/$workspaceSlug'
     | '/demo/$section'
     | '/invitations/accept'
     | '/magic-link/verify'
@@ -504,6 +526,7 @@ export interface FileRouteTypes {
     | '/workspaces/$workspaceSlug/audit'
     | '/workspaces/$workspaceSlug/billing'
     | '/workspaces/$workspaceSlug/members'
+    | '/workspaces/$workspaceSlug/recruitment'
     | '/workspaces/$workspaceSlug/settings'
     | '/workspaces/$workspaceSlug/suspended'
     | '/workspaces/$workspaceSlug/webhooks'
@@ -534,6 +557,7 @@ export interface FileRouteTypes {
     | '/_knowledge/changelog'
     | '/account_/notifications'
     | '/api/support-config'
+    | '/careers/$workspaceSlug'
     | '/demo_/$section'
     | '/invitations/accept'
     | '/magic-link/verify'
@@ -550,6 +574,7 @@ export interface FileRouteTypes {
     | '/workspaces/$workspaceSlug/audit'
     | '/workspaces/$workspaceSlug/billing'
     | '/workspaces/$workspaceSlug/members'
+    | '/workspaces/$workspaceSlug/recruitment'
     | '/workspaces/$workspaceSlug/settings'
     | '/workspaces/$workspaceSlug/suspended'
     | '/workspaces/$workspaceSlug/webhooks'
@@ -580,6 +605,7 @@ export interface RootRouteChildren {
   DotwellKnownOauthAuthorizationServerRoute: typeof DotwellKnownOauthAuthorizationServerRouteWithChildren
   AccountNotificationsRoute: typeof AccountNotificationsRoute
   ApiSupportConfigRoute: typeof ApiSupportConfigRoute
+  CareersWorkspaceSlugRoute: typeof CareersWorkspaceSlugRoute
   DemoSectionRoute: typeof DemoSectionRoute
   InvitationsAcceptRoute: typeof InvitationsAcceptRoute
   MagicLinkVerifyRoute: typeof MagicLinkVerifyRoute
@@ -739,6 +765,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiSupportConfigRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/careers/$workspaceSlug': {
+      id: '/careers/$workspaceSlug'
+      path: '/careers/$workspaceSlug'
+      fullPath: '/careers/$workspaceSlug'
+      preLoaderRoute: typeof CareersWorkspaceSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/demo_/$section': {
       id: '/demo_/$section'
       path: '/demo/$section'
@@ -865,6 +898,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof WorkspacesWorkspaceSlugMembersRouteImport
       parentRoute: typeof WorkspacesWorkspaceSlugRoute
     }
+    '/workspaces/$workspaceSlug/recruitment': {
+      id: '/workspaces/$workspaceSlug/recruitment'
+      path: '/recruitment'
+      fullPath: '/workspaces/$workspaceSlug/recruitment'
+      preLoaderRoute: typeof WorkspacesWorkspaceSlugRecruitmentRouteImport
+      parentRoute: typeof WorkspacesWorkspaceSlugRoute
+    }
     '/workspaces/$workspaceSlug/settings': {
       id: '/workspaces/$workspaceSlug/settings'
       path: '/settings'
@@ -927,6 +967,7 @@ interface WorkspacesWorkspaceSlugRouteChildren {
   WorkspacesWorkspaceSlugAuditRoute: typeof WorkspacesWorkspaceSlugAuditRoute
   WorkspacesWorkspaceSlugBillingRoute: typeof WorkspacesWorkspaceSlugBillingRoute
   WorkspacesWorkspaceSlugMembersRoute: typeof WorkspacesWorkspaceSlugMembersRoute
+  WorkspacesWorkspaceSlugRecruitmentRoute: typeof WorkspacesWorkspaceSlugRecruitmentRoute
   WorkspacesWorkspaceSlugSettingsRoute: typeof WorkspacesWorkspaceSlugSettingsRoute
   WorkspacesWorkspaceSlugSuspendedRoute: typeof WorkspacesWorkspaceSlugSuspendedRoute
   WorkspacesWorkspaceSlugWebhooksRoute: typeof WorkspacesWorkspaceSlugWebhooksRoute
@@ -942,6 +983,8 @@ const WorkspacesWorkspaceSlugRouteChildren: WorkspacesWorkspaceSlugRouteChildren
     WorkspacesWorkspaceSlugAuditRoute: WorkspacesWorkspaceSlugAuditRoute,
     WorkspacesWorkspaceSlugBillingRoute: WorkspacesWorkspaceSlugBillingRoute,
     WorkspacesWorkspaceSlugMembersRoute: WorkspacesWorkspaceSlugMembersRoute,
+    WorkspacesWorkspaceSlugRecruitmentRoute:
+      WorkspacesWorkspaceSlugRecruitmentRoute,
     WorkspacesWorkspaceSlugSettingsRoute: WorkspacesWorkspaceSlugSettingsRoute,
     WorkspacesWorkspaceSlugSuspendedRoute:
       WorkspacesWorkspaceSlugSuspendedRoute,
@@ -1005,6 +1048,7 @@ const rootRouteChildren: RootRouteChildren = {
     DotwellKnownOauthAuthorizationServerRouteWithChildren,
   AccountNotificationsRoute: AccountNotificationsRoute,
   ApiSupportConfigRoute: ApiSupportConfigRoute,
+  CareersWorkspaceSlugRoute: CareersWorkspaceSlugRoute,
   DemoSectionRoute: DemoSectionRoute,
   InvitationsAcceptRoute: InvitationsAcceptRoute,
   MagicLinkVerifyRoute: MagicLinkVerifyRoute,
@@ -1018,13 +1062,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

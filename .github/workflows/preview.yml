@@ -11,6 +11,13 @@ name: Preview
 on:
   pull_request:
     types: [opened, synchronize, reopened, closed]
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 'Existing preview PR number (run from develop/recruitment-saas)'
+        required: true
+        type: number
+        default: 1
 
 # Preview-environment secrets are exposed to this workflow, so it must never run
 # PR code from a fork: every job checks `head.repo.full_name == github.repository`.
@@ -20,35 +27,55 @@ permissions:
   deployments: write
 
 concurrency:
-  group: preview-${{ github.event.pull_request.number }}
+  group: preview-${{ github.event.pull_request.number || inputs.pr_number }}
   # A newer push cancels the in-flight deploy of the same PR; a close never
   # gets cancelled, so the stage is always torn down.
   cancel-in-progress: ${{ github.event.action != 'closed' }}
 
 env:
-  ALCHEMY_STAGE: pr-${{ github.event.pull_request.number }}
-  GIT_COMMIT_SHA: ${{ github.event.pull_request.head.sha }}
-  SERVICE_VERSION: pr-${{ github.event.pull_request.number }}
+  ALCHEMY_STAGE: pr-${{ github.event.pull_request.number || inputs.pr_number }}
+  GIT_COMMIT_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+  SERVICE_VERSION: pr-${{ github.event.pull_request.number || inputs.pr_number }}
 
 jobs:
   deploy:
     name: Deploy preview stage
     if: >-
       vars.PREVIEW_ENABLED == 'true' &&
-      github.event.action != 'closed' &&
-      github.event.pull_request.head.repo.full_name == github.repository &&
-      github.actor != 'dependabot[bot]'
+      (
+        (github.event_name == 'workflow_dispatch' &&
+          github.ref == 'refs/heads/develop/recruitment-saas') ||
+        (github.event_name == 'pull_request' &&
+          github.event.action != 'closed' &&
+          github.event.pull_request.head.repo.full_name == github.repository &&
+          github.actor != 'dependabot[bot]')
+      )
     runs-on: ubuntu-latest
     environment: preview
     env:
       CLOUDFLARE_API_TOKEN: ${{ secrets.PREVIEW_CLOUDFLARE_API_TOKEN }}
-      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.PREVIEW_CLOUDFLARE_ACCOUNT_ID }}
-      # A preview-only secret, distinct from the `production` environment's.
+      CLOUDFLARE_ACCOUNT_ID: ${{ vars.PREVIEW_CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_WORKERS_SUBDOMAIN: ${{ vars.PREVIEW_CLOUDFLARE_WORKERS_SUBDOMAIN }}
+      # Optional stable preview-only key; otherwise generated per deploy, never reusing production.
       BETTER_AUTH_SECRET: ${{ secrets.PREVIEW_BETTER_AUTH_SECRET }}
     steps:
+      - name: Validate Cloudflare preview settings
+        shell: bash
+        run: |
+          if [[ -z "$CLOUDFLARE_ACCOUNT_ID" || -z "$CLOUDFLARE_API_TOKEN" ]]; then
+            echo "::error::Set PREVIEW_CLOUDFLARE_ACCOUNT_ID as a repository variable and PREVIEW_CLOUDFLARE_API_TOKEN as a secret in this GitHub environment."
+            exit 1
+          fi
+          # A disposable PR stage never receives real applicant data.
+          # A stable PREVIEW_BETTER_AUTH_SECRET is optional; without it, each
+          # redeploy rotates authentication and resets the demo sessions.
+          if [[ -z "$BETTER_AUTH_SECRET" ]]; then
+            echo "BETTER_AUTH_SECRET=$(openssl rand -hex 32)" >> "$GITHUB_ENV"
+            echo "::notice::Using a fresh preview-only authentication key."
+          fi
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
-          ref: ${{ github.event.pull_request.head.sha }}
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
       - uses: ./.github/actions/setup
       - name: Resolve preview URLs
@@ -77,9 +104,24 @@ jobs:
           if-no-files-found: error
           retention-days: 14
       - name: Report the deployment
+        if: ${{ github.event_name == 'pull_request' }}
         env:
           GH_TOKEN: ${{ github.token }}
         run: node .github/scripts/preview-status.ts deployed
+
+      - name: Display manual preview URLs
+        if: ${{ github.event_name == 'workflow_dispatch' }}
+        shell: bash
+        run: |
+          {
+            echo "### HireFlow preview \`$ALCHEMY_STAGE\`"
+            echo ""
+            echo "Web: $WEB_URL"
+            echo "API: $API_URL/health"
+            echo "Background: $BACKGROUND_URL"
+            echo ""
+            echo "Synthetic data only. Public applications remain disabled."
+          } >> "$GITHUB_STEP_SUMMARY"
 
   destroy:
     name: Destroy preview stage
@@ -95,10 +137,25 @@ jobs:
     environment: preview-cleanup
     env:
       CLOUDFLARE_API_TOKEN: ${{ secrets.PREVIEW_CLOUDFLARE_API_TOKEN }}
-      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.PREVIEW_CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ vars.PREVIEW_CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_WORKERS_SUBDOMAIN: ${{ vars.PREVIEW_CLOUDFLARE_WORKERS_SUBDOMAIN }}
       # A preview-only secret, distinct from the `production` environment's.
       BETTER_AUTH_SECRET: ${{ secrets.PREVIEW_BETTER_AUTH_SECRET }}
     steps:
+      - name: Validate Cloudflare preview settings
+        shell: bash
+        run: |
+          if [[ -z "$CLOUDFLARE_ACCOUNT_ID" || -z "$CLOUDFLARE_API_TOKEN" ]]; then
+            echo "::error::Set PREVIEW_CLOUDFLARE_ACCOUNT_ID as a repository variable and PREVIEW_CLOUDFLARE_API_TOKEN as a secret in this GitHub environment."
+            exit 1
+          fi
+          # A disposable PR stage never receives real applicant data.
+          # A stable PREVIEW_BETTER_AUTH_SECRET is optional; without it, each
+          # redeploy rotates authentication and resets the demo sessions.
+          if [[ -z "$BETTER_AUTH_SECRET" ]]; then
+            echo "BETTER_AUTH_SECRET=$(openssl rand -hex 32)" >> "$GITHUB_ENV"
+            echo "::notice::Using a fresh preview-only authentication key."
+          fi
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           # The merge ref is gone once a PR merges; the head commit is not.

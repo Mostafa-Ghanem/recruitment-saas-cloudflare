@@ -24,6 +24,7 @@ import { sql } from 'drizzle-orm'
 import { Schema } from 'effect'
 import {
   customType,
+  foreignKey,
   index,
   integer,
   sqliteTable,
@@ -1338,4 +1339,127 @@ export const assistantSessionAuthority = sqliteTable(
     recoveryUntil: integer('recovery_until', { mode: 'timestamp' })
   },
   (table) => [index('assistant_session_authority_user_idx').on(table.userId)]
+)
+
+
+// Recruitment ATS v0.1 tables. All user-facing records carry a workspace_id.
+// Composite foreign keys on application links enforce tenant-safe relationships
+// even if a future application handler accidentally uses a foreign tenant id.
+export const recruitmentJobs = sqliteTable(
+  'recruitment_jobs',
+  {
+    id: id(),
+    workspaceId: workspaceRef(),
+    title: text('title').notNull(),
+    department: text('department').notNull().default(''),
+    location: text('location').notNull().default(''),
+    employmentType: text('employment_type').notNull().default('full_time'),
+    description: text('description').notNull().default(''),
+    status: text('status').notNull().default('draft'),
+    createdAt: isoCreatedAt(),
+    updatedAt: text('updated_at').notNull()
+  },
+  (table) => [
+    uniqueIndex('recruitment_jobs_workspace_id_id_uidx').on(table.workspaceId, table.id),
+    index('recruitment_jobs_workspace_created_idx').on(table.workspaceId, table.createdAt),
+    index('recruitment_jobs_workspace_status_idx').on(table.workspaceId, table.status)
+  ]
+)
+
+export const recruitmentCandidates = sqliteTable(
+  'recruitment_candidates',
+  {
+    id: id(),
+    workspaceId: workspaceRef(),
+    fullName: text('full_name').notNull(),
+    email: text('email').notNull().default(''),
+    phone: text('phone').notNull().default(''),
+    createdAt: isoCreatedAt()
+  },
+  (table) => [
+    uniqueIndex('recruitment_candidates_workspace_id_id_uidx').on(table.workspaceId, table.id),
+    uniqueIndex('recruitment_candidates_workspace_email_uidx').on(table.workspaceId, table.email).where(sql`email <> ''`),
+    uniqueIndex('recruitment_candidates_workspace_phone_name_uidx').on(table.workspaceId, table.phone, table.fullName).where(sql`phone <> ''`),
+    index('recruitment_candidates_workspace_created_idx').on(table.workspaceId, table.createdAt)
+  ]
+)
+
+export const recruitmentApplications = sqliteTable(
+  'recruitment_applications',
+  {
+    id: id(),
+    workspaceId: workspaceRef(),
+    jobId: text('job_id').notNull(),
+    candidateId: text('candidate_id').notNull(),
+    stage: text('stage').notNull().default('new'),
+    submissionKey: text('submission_key'),
+    utmSource: text('utm_source').notNull().default(''),
+    utmMedium: text('utm_medium').notNull().default(''),
+    utmCampaign: text('utm_campaign').notNull().default(''),
+    utmContent: text('utm_content').notNull().default(''),
+    createdAt: isoCreatedAt(),
+    updatedAt: text('updated_at').notNull()
+  },
+  (table) => [
+    uniqueIndex('recruitment_applications_workspace_id_id_uidx').on(table.workspaceId, table.id),
+    foreignKey({
+      name: 'recruitment_applications_workspace_job_fk',
+      columns: [table.workspaceId, table.jobId],
+      foreignColumns: [recruitmentJobs.workspaceId, recruitmentJobs.id]
+    }).onDelete('cascade'),
+    foreignKey({
+      name: 'recruitment_applications_workspace_candidate_fk',
+      columns: [table.workspaceId, table.candidateId],
+      foreignColumns: [recruitmentCandidates.workspaceId, recruitmentCandidates.id]
+    }).onDelete('cascade'),
+    uniqueIndex('recruitment_applications_workspace_job_candidate_uidx').on(table.workspaceId, table.jobId, table.candidateId),
+    uniqueIndex('recruitment_applications_workspace_submission_uidx').on(table.workspaceId, table.submissionKey).where(sql`submission_key IS NOT NULL`),
+    index('recruitment_applications_workspace_stage_idx').on(table.workspaceId, table.stage),
+    index('recruitment_applications_workspace_created_idx').on(table.workspaceId, table.createdAt),
+    index('recruitment_applications_workspace_job_idx').on(table.workspaceId, table.jobId),
+    index('recruitment_applications_workspace_candidate_idx').on(table.workspaceId, table.candidateId)
+  ]
+)
+
+/** Tenant privacy and intake settings: disabled until explicitly opted in. */
+export const recruitmentApplicationSettings = sqliteTable(
+  'recruitment_application_settings',
+  {
+    workspaceId: workspaceRef().primaryKey(),
+    acceptApplications: integer('accept_applications').notNull().default(0),
+    privacyPolicyUrl: text('privacy_policy_url').notNull().default(''),
+    updatedAt: text('updated_at').notNull()
+  }
+)
+
+export const recruitmentStageHistory = sqliteTable(
+  'recruitment_stage_history',
+  {
+    id: id(),
+    workspaceId: workspaceRef(),
+    applicationId: text('application_id').notNull(),
+    fromStage: text('from_stage'),
+    toStage: text('to_stage').notNull(),
+    actorUserId: text('actor_user_id'),
+    createdAt: isoCreatedAt()
+  },
+  (table) => [
+    foreignKey({
+      name: 'recruitment_stage_history_workspace_application_fk',
+      columns: [table.workspaceId, table.applicationId],
+      foreignColumns: [recruitmentApplications.workspaceId, recruitmentApplications.id]
+    }).onDelete('cascade'),
+    index('recruitment_stage_history_workspace_application_idx').on(
+      table.workspaceId, table.applicationId, table.createdAt
+    )
+  ]
+)
+
+export const recruitmentApplyRateLimits = sqliteTable(
+  'recruitment_apply_rate_limits',
+  {
+    key: text('key').primaryKey(),
+    hits: integer('hits').notNull().default(0),
+    expiresAt: integer('expires_at').notNull()
+  }
 )

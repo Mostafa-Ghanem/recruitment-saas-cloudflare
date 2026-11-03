@@ -56,9 +56,11 @@ function loadScript(): Promise<void> {
 export function TurnstileWidget({
   siteKey,
   onToken,
+  action,
   resetKey = 0
 }: {
   readonly siteKey: string
+  readonly action?: string
   readonly onToken: (token: string | null) => void
   readonly resetKey?: number
 }) {
@@ -89,6 +91,7 @@ export function TurnstileWidget({
         ref={widget}
         injectScript={false}
         siteKey={siteKey}
+        options={action ? { action } : {}}
         onSuccess={onToken}
         onExpire={() => onToken(null)}
         onError={() => onToken(null)}

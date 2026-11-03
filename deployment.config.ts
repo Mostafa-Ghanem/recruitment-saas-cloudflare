@@ -5,10 +5,9 @@ const settings: DeploymentSettings = {
   production: {
     branch: 'master',
     reviewers: [],
-    variables: {
-      PRIVACY_CONTROLLER_NAME: 'Martin Brandhaug',
-      PRIVACY_CONTACT_EMAIL: 'martin@brandhaug.net'
-    },
+    // No invented privacy controller or mailbox. The operator must provide
+    // verified legal information before a production recruitment launch.
+    variables: {},
     secrets: []
   }
 }
