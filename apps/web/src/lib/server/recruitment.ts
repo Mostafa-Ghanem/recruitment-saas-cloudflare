@@ -31,8 +31,8 @@ export type RecruitmentApplication = {
 }
 
 export type RecruitmentOverview = {
-  jobs: RecruitmentJob[]
-  applications: RecruitmentApplication[]
+  jobs: Array<RecruitmentJob>
+  applications: Array<RecruitmentApplication>
   settings: { acceptApplications: boolean; privacyPolicyUrl: string; runtimeConfigured: boolean }
   viewer: { role: 'owner' | 'admin' | 'member' }
   counts: { jobs: number; published: number; applications: number; interviewing: number; newApplications: number; staleApplications: number }
@@ -144,7 +144,7 @@ const ApplicationHistoryInput = Schema.Struct({
 
 export const loadRecruitmentApplicationHistoryServerFn = createServerFn({ method: 'GET' })
   .validator(Schema.decodeUnknownSync(ApplicationHistoryInput))
-  .handler(async ({ data }): Promise<RecruitmentStageEvent[]> => {
+  .handler(async ({ data }): Promise<Array<RecruitmentStageEvent>> => {
     const { loadRecruitmentApplicationHistoryHandler } = await import('./recruitment.effects')
     return loadRecruitmentApplicationHistoryHandler(data)
   })
