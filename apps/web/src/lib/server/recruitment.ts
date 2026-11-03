@@ -34,9 +34,20 @@ export type RecruitmentOverview = {
   staleBefore: string
   jobs: Array<RecruitmentJob>
   applications: Array<RecruitmentApplication>
-  settings: { acceptApplications: boolean; privacyPolicyUrl: string; runtimeConfigured: boolean }
+  settings: {
+    acceptApplications: boolean
+    privacyPolicyUrl: string
+    runtimeConfigured: boolean
+  }
   viewer: { role: 'owner' | 'admin' | 'member' }
-  counts: { jobs: number; published: number; applications: number; interviewing: number; newApplications: number; staleApplications: number }
+  counts: {
+    jobs: number
+    published: number
+    applications: number
+    interviewing: number
+    newApplications: number
+    staleApplications: number
+  }
 }
 
 const WorkspaceInput = Schema.Struct({ workspaceSlug: Schema.NonEmptyString })
@@ -123,10 +134,13 @@ const SaveApplicationSettingsInput = Schema.Struct({
   acceptApplications: Schema.Boolean
 })
 
-export const saveRecruitmentApplicationSettingsServerFn = createServerFn({ method: 'POST' })
+export const saveRecruitmentApplicationSettingsServerFn = createServerFn({
+  method: 'POST'
+})
   .validator(Schema.decodeUnknownSync(SaveApplicationSettingsInput))
   .handler(async ({ data }): Promise<void> => {
-    const { saveRecruitmentApplicationSettingsHandler } = await import('./recruitment.effects')
+    const { saveRecruitmentApplicationSettingsHandler } =
+      await import('./recruitment.effects')
     return saveRecruitmentApplicationSettingsHandler(data)
   })
 
@@ -143,9 +157,12 @@ const ApplicationHistoryInput = Schema.Struct({
   applicationId: Schema.NonEmptyString
 })
 
-export const loadRecruitmentApplicationHistoryServerFn = createServerFn({ method: 'GET' })
+export const loadRecruitmentApplicationHistoryServerFn = createServerFn({
+  method: 'GET'
+})
   .validator(Schema.decodeUnknownSync(ApplicationHistoryInput))
   .handler(async ({ data }): Promise<Array<RecruitmentStageEvent>> => {
-    const { loadRecruitmentApplicationHistoryHandler } = await import('./recruitment.effects')
+    const { loadRecruitmentApplicationHistoryHandler } =
+      await import('./recruitment.effects')
     return loadRecruitmentApplicationHistoryHandler(data)
   })
