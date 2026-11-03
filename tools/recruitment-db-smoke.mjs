@@ -2,6 +2,7 @@
 // Dependency-free smoke test: exercises the committed SQLite/D1 migration.
 import { strict as assert } from 'node:assert'
 import { DatabaseSync } from 'node:sqlite'
+// oxlint-disable-next-line effect/noNodeBuiltinImport -- Node-only migration CLI requires direct filesystem reads
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 
@@ -69,11 +70,13 @@ db.prepare(`UPDATE recruitment_applications SET stage='interview' WHERE id='vali
 assert.equal(db.prepare('SELECT stage FROM recruitment_applications WHERE id=?').get('valid').stage,'interview')
 
 // The UI loads only bounded pages, but metrics must count ALL tenant rows.
-for (let i = 0; i < 152; i++) addJob('more-job-' + i,'workspace-a')
+for (let i = 0; i < 152; i++) {
+  addJob(`more-job-${i}`, 'workspace-a')
+}
 for (let i = 0; i < 252; i++) {
-  const candidate = 'more-candidate-' + i
+  const candidate = `more-candidate-${i}`
   addCandidate(candidate,'workspace-a')
-  addApplication('more-application-' + i,'workspace-a','a-live',candidate)
+  addApplication(`more-application-${i}`, 'workspace-a', 'a-live', candidate)
 }
 const visibleJobCount = db.prepare('SELECT id FROM recruitment_jobs WHERE workspace_id=? LIMIT 150')
   .all('workspace-a').length
@@ -154,4 +157,4 @@ assert.equal(db.prepare('SELECT COUNT(*) as n FROM recruitment_jobs WHERE worksp
 assert.equal(db.prepare('SELECT COUNT(*) as n FROM recruitment_candidates WHERE workspace_id=?').get('workspace-a').n,0)
 assert.equal(db.prepare('SELECT COUNT(*) as n FROM recruitment_applications WHERE workspace_id=?').get('workspace-a').n,0)
 db.close()
-console.log('PASS: ATS migrations, tenant isolation, idempotency, identity uniqueness, stage audit, suspension gate, rate limit, aggregate counts, cascade deletion')
+process.stdout.write('PASS: ATS migrations, tenant isolation, idempotency, identity uniqueness, stage audit, suspension gate, rate limit, aggregate counts, cascade deletion\n')
