@@ -1,3 +1,4 @@
+import { Button } from '@/components/ui/button'
 import { createFileRoute } from '@tanstack/react-router'
 import { useState } from 'react'
 import { BriefcaseBusinessIcon, MapPinIcon, ArrowUpRightIcon, Globe2Icon } from 'lucide-react'
@@ -29,9 +30,9 @@ function CareersRoute() {
             <div className="rounded-xl bg-primary/10 p-2.5"><BriefcaseBusinessIcon className="size-6 text-primary"/></div>
             <span className="text-base font-semibold">{data.company || (ar ? 'الوظائف' : 'Careers')}</span>
           </div>
-          <button className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-border px-4 text-sm hover:bg-muted" type="button" onClick={() => setLocale(ar ? 'en' : 'ar')}>
+          <Button className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-border px-4 text-sm hover:bg-muted" type="button" onClick={() => setLocale(ar ? 'en' : 'ar')}>
             <Globe2Icon className="size-4"/>{ar ? 'English' : 'العربية'}
-          </button>
+          </Button>
         </div>
       </header>
       <div className="mx-auto max-w-5xl px-5 pb-20 pt-12 sm:pt-20">
@@ -74,14 +75,14 @@ function CareersRoute() {
                       : (ar ? 'التقديم الإلكتروني لهذه الوظيفة لم يُفعّل بعد.' : 'Online applications are not enabled for this role yet.')}
                   </p>
                   {data.applicationConfig.enabled && (
-                    <button type="button" aria-expanded={activeJobId === job.id}
+                    <Button type="button" aria-expanded={activeJobId === job.id}
                       aria-controls={'apply-' + job.id}
                       onClick={() => setActiveJobId(activeJobId === job.id ? null : job.id)}
                       className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-primary px-5 font-semibold text-primary-foreground hover:opacity-90">
                       <ArrowUpRightIcon aria-hidden className="size-4"/>
                       {activeJobId === job.id ? (ar ? 'إغلاق التقديم' : 'Close application') :
                         (ar ? 'قدّم الآن' : 'Apply now')}
-                    </button>
+                    </Button>
                   )}
                 </div>
                 {data.applicationConfig.enabled && activeJobId === job.id && (
